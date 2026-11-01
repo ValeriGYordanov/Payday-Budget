@@ -1,0 +1,225 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Connect to the Payday Budget add-on",
+        "description": "Enter the add-on's host name and the integration token shown in the add-on UI under Settings.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "token": "Integration token"
+        },
+        "data_description": {
+          "host": "The add-on's host name, shown on its info page (e.g. 416b9a6e-payday-budget).",
+          "port": "8099 unless you changed it.",
+          "token": "Add-on UI → Settings → Integration token."
+        }
+      },
+      "hassio_confirm": {
+        "title": "Payday Budget add-on found",
+        "description": "Set up the Payday Budget integration for the {addon} add-on?"
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate Payday Budget",
+        "description": "The add-on rejected the stored token. Paste the token from the add-on UI under Settings.",
+        "data": {
+          "token": "Integration token"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "invalid_auth": "Invalid authentication",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "Service is already configured",
+      "reauth_successful": "Re-authentication was successful"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "period": {
+        "name": "Period"
+      },
+      "period_start": {
+        "name": "Period start"
+      },
+      "income": {
+        "name": "Income"
+      },
+      "expenses": {
+        "name": "Expenses"
+      },
+      "balance": {
+        "name": "Balance"
+      },
+      "unallocated": {
+        "name": "Unallocated"
+      },
+      "history": {
+        "name": "History"
+      },
+      "budget_target": {
+        "name": "{budget} target"
+      },
+      "budget_spent": {
+        "name": "{budget} spent"
+      },
+      "budget_remaining": {
+        "name": "{budget} remaining"
+      },
+      "budget_used": {
+        "name": "{budget} used"
+      }
+    },
+    "binary_sensor": {
+      "budget_over_target": {
+        "name": "{budget} over target"
+      }
+    },
+    "button": {
+      "start_new_period": {
+        "name": "Start new period"
+      }
+    }
+  },
+  "exceptions": {
+    "rule_violation": {
+      "message": "{code}: {message}"
+    },
+    "cannot_connect": {
+      "message": "Cannot reach the Payday Budget add-on."
+    },
+    "invalid_auth": {
+      "message": "The Payday Budget add-on rejected the token."
+    },
+    "not_loaded": {
+      "message": "Payday Budget is not set up or not loaded."
+    },
+    "invalid_amount": {
+      "message": "Invalid amount {amount}: use a positive number with at most {digits} decimals."
+    },
+    "unknown_category": {
+      "message": "No {kind} category named or numbered {category}."
+    },
+    "unknown_budget": {
+      "message": "No budget named or numbered {budget}."
+    },
+    "no_previous_period": {
+      "message": "There is no previous period."
+    },
+    "invalid_period": {
+      "message": "Invalid period {period}: use current, previous or a period id."
+    }
+  },
+  "services": {
+    "add_transaction": {
+      "name": "Add transaction",
+      "description": "Adds an income or expense.",
+      "fields": {
+        "kind": {
+          "name": "Kind",
+          "description": "income or expense."
+        },
+        "amount": {
+          "name": "Amount",
+          "description": "Positive amount in major units, e.g. 12.50."
+        },
+        "category": {
+          "name": "Category",
+          "description": "Category name or id (same kind)."
+        },
+        "budget": {
+          "name": "Budget",
+          "description": "Budget name or id. Required for expenses, not allowed for incomes."
+        },
+        "date": {
+          "name": "Date",
+          "description": "Defaults to today."
+        },
+        "description": {
+          "name": "Description",
+          "description": "Optional, up to 500 characters."
+        },
+        "tags": {
+          "name": "Tags",
+          "description": "Optional tag names."
+        }
+      }
+    },
+    "update_transaction": {
+      "name": "Update transaction",
+      "description": "Changes fields of a transaction.",
+      "fields": {
+        "id": {
+          "name": "ID",
+          "description": "Transaction id."
+        },
+        "kind": {
+          "name": "Kind",
+          "description": "income or expense."
+        },
+        "amount": {
+          "name": "Amount",
+          "description": "Positive amount in major units, e.g. 12.50."
+        },
+        "category": {
+          "name": "Category",
+          "description": "Category name or id (same kind)."
+        },
+        "budget": {
+          "name": "Budget",
+          "description": "Budget name or id. Required for expenses, not allowed for incomes."
+        },
+        "date": {
+          "name": "Date",
+          "description": "Transaction date."
+        },
+        "description": {
+          "name": "Description",
+          "description": "Optional, up to 500 characters."
+        },
+        "tags": {
+          "name": "Tags",
+          "description": "Replaces the transaction's tags."
+        }
+      }
+    },
+    "delete_transaction": {
+      "name": "Delete transaction",
+      "description": "Deletes a transaction.",
+      "fields": {
+        "id": {
+          "name": "ID",
+          "description": "Transaction id."
+        }
+      }
+    },
+    "start_period": {
+      "name": "Start period",
+      "description": "Starts a new budgeting period.",
+      "fields": {
+        "date": {
+          "name": "Start date",
+          "description": "Defaults to today. Cannot be in the future."
+        },
+        "name": {
+          "name": "Name",
+          "description": "Defaults to the month and year of the start date."
+        }
+      }
+    },
+    "get_summary": {
+      "name": "Get summary",
+      "description": "Returns income, expenses and budgets for a period.",
+      "fields": {
+        "period": {
+          "name": "Period",
+          "description": "current, previous or a period id."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "entity": {
+    "sensor": {
+      "period": { "default": "mdi:calendar-range" },
+      "period_start": { "default": "mdi:calendar-start" },
+      "income": { "default": "mdi:cash-plus" },
+      "expenses": { "default": "mdi:cash-minus" },
+      "balance": { "default": "mdi:scale-balance" },
+      "unallocated": { "default": "mdi:wallet-outline" },
+      "history": { "default": "mdi:chart-bar" },
+      "budget_target": { "default": "mdi:target" },
+      "budget_spent": { "default": "mdi:cart-outline" },
+      "budget_remaining": { "default": "mdi:wallet" },
+      "budget_used": { "default": "mdi:percent" }
+    },
+    "binary_sensor": {
+      "budget_over_target": { "default": "mdi:check-circle-outline", "state": { "on": "mdi:alert-circle" } }
+    },
+    "button": {
+      "start_new_period": { "default": "mdi:calendar-plus" }
+    }
+  },
+  "services": {
+    "add_transaction": { "service": "mdi:cash-register" },
+    "update_transaction": { "service": "mdi:pencil" },
+    "delete_transaction": { "service": "mdi:delete" },
+    "start_period": { "service": "mdi:calendar-plus" },
+    "get_summary": { "service": "mdi:chart-box" }
+  }
+}

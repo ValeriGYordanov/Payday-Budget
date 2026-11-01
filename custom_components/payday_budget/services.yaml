@@ -1,0 +1,94 @@
+add_transaction:
+  fields:
+    kind:
+      required: true
+      selector:
+        select:
+          options:
+            - income
+            - expense
+    amount:
+      required: true
+      example: "12.50"
+      selector:
+        text:
+    category:
+      required: true
+      example: Food
+      selector:
+        text:
+    budget:
+      example: Needs
+      selector:
+        text:
+    date:
+      selector:
+        date:
+    description:
+      selector:
+        text:
+    tags:
+      selector:
+        text:
+          multiple: true
+
+update_transaction:
+  fields:
+    id:
+      required: true
+      selector:
+        number:
+          min: 1
+          mode: box
+    kind:
+      selector:
+        select:
+          options:
+            - income
+            - expense
+    amount:
+      example: "12.50"
+      selector:
+        text:
+    category:
+      selector:
+        text:
+    budget:
+      selector:
+        text:
+    date:
+      selector:
+        date:
+    description:
+      selector:
+        text:
+    tags:
+      selector:
+        text:
+          multiple: true
+
+delete_transaction:
+  fields:
+    id:
+      required: true
+      selector:
+        number:
+          min: 1
+          mode: box
+
+start_period:
+  fields:
+    date:
+      selector:
+        date:
+    name:
+      selector:
+        text:
+
+get_summary:
+  fields:
+    period:
+      example: current
+      default: current
+      selector:
+        text:

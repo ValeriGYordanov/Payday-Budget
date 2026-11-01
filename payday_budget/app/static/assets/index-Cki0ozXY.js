@@ -673,7 +673,7 @@
         </div>
         <p class="muted">${M(`settings.token_hint`)}</p>
       </div>
-      <p class="muted">${M(`settings.version`,{version:`0.2.0`})}</p>
+      <p class="muted">${M(`settings.version`,{version:`0.3.0`})}</p>
       ${A}
     `}};customElements.define(`page-settings`,$d);var ef=[{name:`Needs`,percent:`50`},{name:`Wants`,percent:`30`},{name:`Savings`,percent:`20`}],tf=class extends N{static{this.properties={...N.properties,_step:{state:!0},_currencies:{state:!0},_currency:{state:!0},_start:{state:!0},_periodName:{state:!0},_budgets:{state:!0},_error:{state:!0},_busy:{state:!0}}}constructor(){super(),this._step=0,this._currencies=[],this._currency=`EUR`,this._start=Gd(),this._periodName=``,this._budgets=ef.map(e=>({...e})),this._error=``,this._busy=!1}static{this.styles=[P,o`
       .budget {

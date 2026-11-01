@@ -1,4 +1,4 @@
-"""The add-on version must match everywhere it is declared."""
+"""The version must match everywhere it is declared (add-on, UI, integration)."""
 
 import json
 import re
@@ -16,6 +16,10 @@ def test_versions_match(tmp_path: Path) -> None:
     version = match.group(1)
     package = json.loads((ROOT / "frontend" / "package.json").read_text())
     assert package["version"] == version
+    manifest = json.loads(
+        (ROOT / "custom_components" / "payday_budget" / "manifest.json").read_text()
+    )
+    assert manifest["version"] == version
     app = create_app(tmp_path, announce=lambda _t: None)
     assert app.version == version
     app.state.engine.dispose()

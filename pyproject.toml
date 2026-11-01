@@ -1,6 +1,6 @@
 [tool.pytest.ini_options]
 pythonpath = ["payday_budget"]
-testpaths = ["tests"]
+testpaths = ["tests/addon"]  # integration tests: see tests/integration/pytest.ini
 addopts = "-ra"
 
 [tool.ruff]
@@ -14,6 +14,7 @@ select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
 python_version = "3.12"
 strict = true
 mypy_path = "payday_budget"
+exclude = ["^custom_components/", "^tests/integration/"]  # checked with .venv-ha
 explicit_package_bases = true
 plugins = ["pydantic.mypy"]
 
