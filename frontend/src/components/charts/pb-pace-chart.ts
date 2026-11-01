@@ -4,6 +4,7 @@ import type { CurrencyInfo } from "../../money";
 import type { Daily } from "../../types";
 import { ChartElement, type Palette, moneyTick } from "./chart-base";
 import { paceTarget } from "./pace";
+import { define } from "../../define";
 
 /**
  * §8 pace: cumulative daily spend vs a linear target line. The line rises from 0 to
@@ -11,6 +12,7 @@ import { paceTarget } from "./pace";
  */
 export class PbPaceChart extends ChartElement {
   static override properties = {
+    ...ChartElement.properties,
     daily: { attribute: false },
     targetMinor: { type: Number },
     currency: { attribute: false },
@@ -73,4 +75,4 @@ export class PbPaceChart extends ChartElement {
     };
   }
 }
-customElements.define("pb-pace-chart", PbPaceChart);
+define("pb-pace-chart", PbPaceChart);

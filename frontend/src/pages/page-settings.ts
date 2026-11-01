@@ -7,6 +7,7 @@ import { UI_COPY } from "../icons";
 import { PageElement } from "../page";
 import { shared } from "../styles";
 import type { Currency } from "../types";
+import { define } from "../define";
 
 
 /** Settings: currency (K2: same exponent only, confirmed), integration token (§6.3). */
@@ -90,4 +91,4 @@ export class PageSettings extends PageElement {
     `;
   }
 }
-customElements.define("page-settings", PageSettings);
+define("page-settings", PageSettings);

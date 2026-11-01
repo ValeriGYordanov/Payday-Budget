@@ -3,10 +3,12 @@ import { t } from "../../i18n";
 import type { CurrencyInfo } from "../../money";
 import type { HistoryItem } from "../../types";
 import { ChartElement, type Palette, moneyTick } from "./chart-base";
+import { define } from "../../define";
 
 /** §8 periods: income vs expenses per period; optionally expenses stacked by budget. */
 export class PbPeriodsChart extends ChartElement {
   static override properties = {
+    ...ChartElement.properties,
     items: { attribute: false },
     currency: { attribute: false },
     stacked: { type: Boolean },
@@ -70,4 +72,4 @@ export class PbPeriodsChart extends ChartElement {
     };
   }
 }
-customElements.define("pb-periods-chart", PbPeriodsChart);
+define("pb-periods-chart", PbPeriodsChart);

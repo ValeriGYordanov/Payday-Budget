@@ -1,5 +1,6 @@
 import { LitElement, css, html, svg } from "lit";
 import { iconPath } from "../icons";
+import { define } from "../define";
 
 /** An MDI icon by name (`icon="mdi:food"`) or raw SVG path (`path=...`). */
 export class PbIcon extends LitElement {
@@ -32,4 +33,4 @@ export class PbIcon extends LitElement {
     return html`<svg viewBox="0 0 24 24" aria-hidden="true">${svg`<path d=${d}></path>`}</svg>`;
   }
 }
-customElements.define("pb-icon", PbIcon);
+define("pb-icon", PbIcon);

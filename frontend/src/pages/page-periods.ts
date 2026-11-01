@@ -9,6 +9,7 @@ import { UI_DELETE, UI_EDIT } from "../icons";
 import { PageElement } from "../page";
 import { shared } from "../styles";
 import type { Period } from "../types";
+import { define } from "../define";
 
 /** Periods: list, start new (P3), edit start date / rename (P4, P5), delete (P5). */
 export class PagePeriods extends PageElement {
@@ -128,4 +129,4 @@ export class PagePeriods extends PageElement {
     `;
   }
 }
-customElements.define("page-periods", PagePeriods);
+define("page-periods", PagePeriods);

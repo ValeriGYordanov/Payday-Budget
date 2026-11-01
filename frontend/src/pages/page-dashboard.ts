@@ -10,6 +10,7 @@ import { type CurrencyInfo, formatMoney } from "../money";
 import { PageElement } from "../page";
 import { shared } from "../styles";
 import type { Breakdown, Daily, HistoryItem, Period, Summary } from "../types";
+import { define } from "../define";
 
 const HISTORY_LIMIT = 12;
 
@@ -232,4 +233,4 @@ export class PageDashboard extends PageElement {
     `;
   }
 }
-customElements.define("page-dashboard", PageDashboard);
+define("page-dashboard", PageDashboard);

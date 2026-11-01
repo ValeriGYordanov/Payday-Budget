@@ -8,6 +8,7 @@ import { UI_ARCHIVE, UI_DELETE, UI_DOWN, UI_EDIT, UI_UNARCHIVE, UI_UP } from "..
 import { PageElement } from "../page";
 import { shared } from "../styles";
 import type { Budget, BudgetList } from "../types";
+import { define } from "../define";
 
 /** Budgets: % per budget, sum indicator and unallocated (B1), archive (B4), order. */
 export class PageBudgets extends PageElement {
@@ -148,4 +149,4 @@ export class PageBudgets extends PageElement {
     `;
   }
 }
-customElements.define("page-budgets", PageBudgets);
+define("page-budgets", PageBudgets);

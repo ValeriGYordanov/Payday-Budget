@@ -3,6 +3,7 @@ import { t } from "../i18n";
 import { UI_CLOSE } from "../icons";
 import { shared } from "../styles";
 import "./pb-icon";
+import { define } from "../define";
 
 /** Modal dialog on the native <dialog> element. Fires `closed` when dismissed. */
 export class PbDialog extends LitElement {
@@ -78,7 +79,7 @@ export class PbDialog extends LitElement {
     `;
   }
 }
-customElements.define("pb-dialog", PbDialog);
+define("pb-dialog", PbDialog);
 
 /** Ask for confirmation in a modal dialog (window.confirm may be blocked in iframes). */
 export function confirmAction(message: string, confirmLabel = t("common.confirm")): Promise<boolean> {

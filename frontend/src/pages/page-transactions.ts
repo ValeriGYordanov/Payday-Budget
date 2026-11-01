@@ -8,6 +8,7 @@ import { type CurrencyInfo, formatMoney } from "../money";
 import { PageElement } from "../page";
 import { shared } from "../styles";
 import type { BudgetList, Category, Page, Period, Tag, Transaction, User } from "../types";
+import { define } from "../define";
 
 const PAGE_SIZE = 50;
 
@@ -254,4 +255,4 @@ export class PageTransactions extends PageElement {
     `;
   }
 }
-customElements.define("page-transactions", PageTransactions);
+define("page-transactions", PageTransactions);

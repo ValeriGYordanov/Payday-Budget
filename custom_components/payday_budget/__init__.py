@@ -11,6 +11,7 @@ from homeassistant.helpers.typing import ConfigType
 from .api import PaydayBudgetClient
 from .const import CONF_TOKEN, DOMAIN
 from .coordinator import PaydayBudgetConfigEntry, PaydayBudgetCoordinator, PaydayBudgetRuntime
+from .frontend import async_register_cards
 from .services import async_register_services
 from .websocket import async_register_websocket_commands
 
@@ -21,6 +22,7 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     async_register_services(hass)
     async_register_websocket_commands(hass)
+    await async_register_cards(hass)
     return True
 
 

@@ -3,15 +3,21 @@ import { t } from "../../i18n";
 import { type CurrencyInfo, formatMoney } from "../../money";
 import { shared } from "../../styles";
 import type { Summary } from "../../types";
+import { define } from "../../define";
 
 /** §8 progress: per budget target vs spent bars, plus unallocated. */
 export class PbProgressChart extends LitElement {
-  static override properties = { summary: { attribute: false } };
+  static override properties = {
+    summary: { attribute: false },
+    showUnallocated: { type: Boolean },
+  };
   declare summary: Summary | null;
+  declare showUnallocated: boolean;
 
   constructor() {
     super();
     this.summary = null;
+    this.showUnallocated = true;
   }
 
   static override styles = [
@@ -79,6 +85,12 @@ export class PbProgressChart extends LitElement {
           </div>
         </div>`;
       })}
+      ${this.showUnallocated ? this.renderUnallocated(s, money) : nothing}
+    `;
+  }
+
+  private renderUnallocated(s: Summary, money: (minor: number) => string) {
+    return html`
       <div class="budget">
         <div class="top">
           <strong>${t("dash.unallocated")}</strong>
@@ -92,4 +104,4 @@ export class PbProgressChart extends LitElement {
     `;
   }
 }
-customElements.define("pb-progress-chart", PbProgressChart);
+define("pb-progress-chart", PbProgressChart);

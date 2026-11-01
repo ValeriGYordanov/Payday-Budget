@@ -8,6 +8,7 @@ import { shared } from "../styles";
 import type { Budget, BudgetList, Category, Kind, Settings, Tag, Transaction } from "../types";
 import { confirmAction } from "./pb-dialog";
 import "./pb-dialog";
+import { define } from "../define";
 
 /** Fields that show their API error inline; other errors appear above the buttons. */
 const INLINE_FIELDS = ["amount_minor", "category_id", "budget_id", "date"];
@@ -327,4 +328,4 @@ export class PbTransactionDialog extends LitElement {
     `;
   }
 }
-customElements.define("pb-transaction-dialog", PbTransactionDialog);
+define("pb-transaction-dialog", PbTransactionDialog);

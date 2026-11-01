@@ -17,6 +17,7 @@ import type { Settings, Transaction } from "../types";
 import "./pb-icon";
 import type { PbTransactionDialog } from "./pb-transaction-dialog";
 import "./pb-transaction-dialog";
+import { define } from "../define";
 
 const PAGES = [
   "dashboard",
@@ -301,4 +302,4 @@ export class PbApp extends LitElement {
     `;
   }
 }
-customElements.define("pb-app", PbApp);
+define("pb-app", PbApp);

@@ -8,6 +8,7 @@ import { UI_DELETE, UI_EDIT } from "../icons";
 import { PageElement } from "../page";
 import { shared } from "../styles";
 import type { Tag } from "../types";
+import { define } from "../define";
 
 /** Tags: create, rename, delete (removes the tag from transactions). */
 export class PageTags extends PageElement {
@@ -92,4 +93,4 @@ export class PageTags extends PageElement {
     `;
   }
 }
-customElements.define("page-tags", PageTags);
+define("page-tags", PageTags);

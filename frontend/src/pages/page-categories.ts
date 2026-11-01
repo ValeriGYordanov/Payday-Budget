@@ -8,6 +8,7 @@ import { ICONS, UI_ARCHIVE, UI_DELETE, UI_EDIT, UI_UNARCHIVE } from "../icons";
 import { PageElement } from "../page";
 import { shared } from "../styles";
 import type { Category, Kind } from "../types";
+import { define } from "../define";
 
 interface Draft {
   id: number | null;
@@ -148,4 +149,4 @@ export class PageCategories extends PageElement {
     `;
   }
 }
-customElements.define("page-categories", PageCategories);
+define("page-categories", PageCategories);

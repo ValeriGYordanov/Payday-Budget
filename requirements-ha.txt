@@ -1,3 +1,17 @@
 # Integration tests (Python 3.14): .venv-ha
 pytest-homeassistant-custom-component==0.13.375
 mypy==2.4.1
+# HA's own frontend pin: loads `frontend` in tests and runs a local HA to view the cards.
+home-assistant-frontend==20260930.5
+# Only for running the local dev HA (`.claude/launch.json` → "ha"): HA's own pins for
+# core components its frontend needs; the test harness does not install them.
+PyTurboJPEG==1.8.3
+gazetteer-matcher==1.1.0
+ha-ffmpeg==3.2.2
+hassil==3.12.1
+home-assistant-intents==2026.10.6
+infrared-protocols==10.1.0
+mutagen==1.48.1
+pymicro-vad==1.0.1
+pyspeex-noise==1.0.2
+rf-protocols==4.3.0

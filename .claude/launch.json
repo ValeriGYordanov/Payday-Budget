@@ -4,14 +4,35 @@
     {
       "name": "backend",
       "runtimeExecutable": "/bin/sh",
-      "runtimeArgs": ["-c", "cd payday_budget && PAYDAY_BUDGET_DATA=../.dev-data ../.venv/bin/python -m app"],
+      "runtimeArgs": [
+        "-c",
+        "cd payday_budget && PAYDAY_BUDGET_DATA=../.dev-data ../.venv/bin/python -m app"
+      ],
       "port": 8099
     },
     {
       "name": "frontend",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "frontend", "run", "dev", "--", "--port", "5173", "--strictPort"],
+      "runtimeArgs": [
+        "--prefix",
+        "frontend",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5173",
+        "--strictPort"
+      ],
       "port": 5173
+    },
+    {
+      "name": "ha",
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": [
+        "-c",
+        ".venv-ha/bin/hass -c .dev-ha --skip-pip"
+      ],
+      "port": 8124
     }
   ]
 }

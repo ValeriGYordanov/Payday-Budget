@@ -7,6 +7,7 @@ import "../components/pb-icon";
 import { PageElement } from "../page";
 import { shared } from "../styles";
 import type { Currency } from "../types";
+import { define } from "../define";
 
 interface BudgetDraft {
   name: string;
@@ -153,4 +154,4 @@ export class PageSetup extends PageElement {
     return html`<h1>${t("setup.title")}</h1><div class="card">${this.renderStep()}</div>`;
   }
 }
-customElements.define("page-setup", PageSetup);
+define("page-setup", PageSetup);

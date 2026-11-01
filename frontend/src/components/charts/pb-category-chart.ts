@@ -4,12 +4,14 @@ import { t } from "../../i18n";
 import type { CurrencyInfo } from "../../money";
 import type { Breakdown } from "../../types";
 import { ChartElement, type Palette, moneyTick } from "./chart-base";
+import { define } from "../../define";
 
 const MAX_SLICES = 7;
 
 /** §8 category: donut of expenses by category for a period (optionally one budget). */
 export class PbCategoryChart extends ChartElement {
   static override properties = {
+    ...ChartElement.properties,
     breakdown: { attribute: false },
     currency: { attribute: false },
   };
@@ -62,4 +64,4 @@ export class PbCategoryChart extends ChartElement {
     return super.render();
   }
 }
-customElements.define("pb-category-chart", PbCategoryChart);
+define("pb-category-chart", PbCategoryChart);

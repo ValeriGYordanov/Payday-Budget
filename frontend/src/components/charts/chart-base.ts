@@ -76,6 +76,10 @@ export abstract class ChartElement extends LitElement {
     }
   `;
 
+  static override properties = { theme: {} };
+  /** Changes when the host theme changes (e.g. HA dark mode); colours are re-read. */
+  declare theme: string;
+
   /** Chart config for the current data, or null when there is nothing to draw. */
   protected abstract chartConfig(palette: Palette): ChartConfiguration | null;
 
@@ -91,7 +95,12 @@ export abstract class ChartElement extends LitElement {
     this.chart = undefined;
   }
 
-  override updated() {
+  override updated(changed: Map<string, unknown>) {
+    if (changed.size === 1 && changed.has("theme")) {
+      // Theme switched: the host applies the new colours around the same time.
+      requestAnimationFrame(() => this.draw());
+      return;
+    }
     this.draw();
   }
 

@@ -10,6 +10,7 @@ import { type CurrencyInfo, amountInputValue, formatMoney, parseAmount } from ".
 import { PageElement, errorMessage } from "../page";
 import { shared } from "../styles";
 import type { BudgetList, Category, Frequency, Kind, RecurringRule } from "../types";
+import { define } from "../define";
 
 interface Draft {
   id: number | null;
@@ -254,4 +255,4 @@ export class PageRecurring extends PageElement {
     `;
   }
 }
-customElements.define("page-recurring", PageRecurring);
+define("page-recurring", PageRecurring);
