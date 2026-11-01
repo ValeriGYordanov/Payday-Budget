@@ -34,6 +34,7 @@ from app.services import (
     setup,
     tags,
     transactions,
+    users,
 )
 
 router = APIRouter(prefix="/api/v1")
@@ -42,6 +43,18 @@ SSE_KEEPALIVE_SECONDS = 25.0
 
 
 # --- settings & setup -------------------------------------------------------
+
+
+@router.get("/currencies")
+def list_currencies() -> dict[str, Any]:
+    """K1/K2: ISO 4217 codes with their minor-unit exponent, for the UI."""
+    return {"items": settings.currencies()}
+
+
+@router.get("/users")
+def list_users(session: SessionDep) -> dict[str, Any]:
+    """People who created transactions or periods (T3), for the user filter."""
+    return {"items": users.listing(session)}
 
 
 @router.get("/settings")

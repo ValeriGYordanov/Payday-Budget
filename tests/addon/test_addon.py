@@ -1,6 +1,7 @@
 """Add-on runtime (§6): auth, token, SSE events, discovery, entry point."""
 
 import asyncio
+import datetime as dt
 import json
 import logging
 import os
@@ -23,7 +24,7 @@ from app import config, discovery
 from app.api import routes
 from app.events import Broadcaster
 from app.main import create_app
-from tests.addon.conftest import Api, Clock, make_app
+from tests.addon.conftest import Api, Clock, ingress_client, make_app
 
 # --- §6.2 auth ----------------------------------------------------------------
 
@@ -93,10 +94,52 @@ def test_api_docs_are_disabled(api: Api) -> None:
         assert api.client.get(path).status_code == 404
 
 
-def test_ingress_placeholder_page(api: Api) -> None:
-    response = api.client.get("/")
-    assert response.status_code == 200
-    assert "Payday Budget" in response.text
+def test_ui_index_and_assets_are_served(data_dir: Path, clock: Clock, tmp_path: Path) -> None:
+    static = tmp_path / "static"
+    (static / "assets").mkdir(parents=True)
+    (static / "index.html").write_text("<!doctype html><title>Payday Budget</title>")
+    (static / "assets" / "app-abc123.js").write_text("console.log(1)")
+    app = create_app(
+        data_dir, today=lambda: clock.today, announce=lambda _t: None, static_dir=static
+    )
+    with ingress_client(app) as client:
+        index = client.get("/")
+        assert index.status_code == 200
+        assert "Payday Budget" in index.text
+        assert index.headers["cache-control"] == "no-cache"
+        assert client.get("/assets/app-abc123.js").text == "console.log(1)"
+        assert client.get("/assets/missing.js").status_code == 404
+    assert TestClient(app).get("/assets/app-abc123.js").status_code == 401
+    app.state.engine.dispose()
+
+
+def test_ui_not_built_returns_503(data_dir: Path, clock: Clock, tmp_path: Path) -> None:
+    app = create_app(
+        data_dir, today=lambda: clock.today, announce=lambda _t: None, static_dir=tmp_path / "x"
+    )
+    with ingress_client(app) as client:
+        assert client.get("/").status_code == 503
+    app.state.engine.dispose()
+
+
+def test_currencies_endpoint(api: Api) -> None:
+    items = api.get("/currencies")["items"]
+    by_code = {c["code"]: c["minor_unit"] for c in items}
+    assert (by_code["EUR"], by_code["JPY"], by_code["KWD"]) == (2, 0, 3)
+    assert [c["code"] for c in items] == sorted(by_code)
+
+
+def test_T3_users_endpoint_lists_known_creators(ready: Api) -> None:
+    ready.expense(100, "2026-10-26", headers={"X-Remote-User-Id": "u1", "X-Remote-User-Name": "v"})
+    ready.expense(100, "2026-10-26", headers={"X-Remote-User-Id": "u2", "X-Remote-User-Name": "w"})
+    ready.expense(100, "2026-10-26")  # no user
+    ready.clock.today = dt.date(2026, 11, 25)
+    ready.post("/periods", {}, headers={"X-Remote-User-Id": "u3", "X-Remote-User-Name": "x"})
+    assert ready.get("/users")["items"] == [
+        {"id": "u1", "name": "v"},
+        {"id": "u2", "name": "w"},
+        {"id": "u3", "name": "x"},
+    ]
 
 
 # --- SSE `changed` events --------------------------------------------------------

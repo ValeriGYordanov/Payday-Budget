@@ -44,6 +44,10 @@ def change_currency(session: Session, code: str, *, confirm: bool) -> Settings:
     return settings
 
 
+def currencies() -> list[dict[str, Any]]:
+    return [{"code": code, "minor_unit": exp} for code, exp in sorted(currency.EXPONENTS.items())]
+
+
 def serialize(settings: Settings) -> dict[str, Any]:
     return {
         "currency": settings.currency,

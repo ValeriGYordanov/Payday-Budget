@@ -8,9 +8,10 @@ from collections.abc import AsyncIterator, Callable
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import IntegrityError
 from starlette.exceptions import HTTPException
 
@@ -57,14 +58,26 @@ async def _integrity_error(_request: Request, exc: Exception) -> JSONResponse:
     return _error(409, "conflict", "The change conflicts with existing data")
 
 
-PLACEHOLDER_PAGE = """<!doctype html>
-<html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Payday Budget</title></head>
-<body style="font-family: system-ui, sans-serif; padding: 16px">
-<h1>Payday Budget</h1><p>The backend is running. The UI arrives in a later version.</p>
+STATIC_DIR = Path(__file__).resolve().parent / "static"  # built by `frontend` (npm run build)
+UI_MISSING_PAGE = """<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Payday Budget</title></head>
+<body><p>The UI has not been built. Run <code>npm run build</code> in <code>frontend/</code>.</p>
 </body></html>
 """
+
+
+def _mount_ui(app: FastAPI, static_dir: Path) -> None:
+    """Serve the SPA: `index.html` at `/`, hashed bundles under `/assets` (§6.6)."""
+    index = static_dir / "index.html"
+    assets = static_dir / "assets"
+    if assets.is_dir():
+        app.mount("/assets", StaticFiles(directory=assets), name="assets")
+
+    @app.get("/", include_in_schema=False)
+    def ui() -> Response:
+        if not index.is_file():
+            return HTMLResponse(UI_MISSING_PAGE, status_code=503)
+        return FileResponse(index, headers={"Cache-Control": "no-cache"})
 
 
 def create_app(
@@ -73,6 +86,7 @@ def create_app(
     today: Callable[[], dt.date] = clock.today,
     now: Callable[[], dt.datetime] | None = None,
     announce: Callable[[str], object] | None = None,
+    static_dir: Path | None = None,
 ) -> FastAPI:
     base = Path(data_dir) if data_dir is not None else config.data_dir()
     engine = make_engine(str(config.db_path(base)))
@@ -107,7 +121,7 @@ def create_app(
 
     app = FastAPI(
         title="Payday Budget",
-        version="0.1.1",
+        version="0.2.0",
         lifespan=lifespan,
         docs_url=None,
         redoc_url=None,
@@ -125,8 +139,5 @@ def create_app(
     app.include_router(router)
     app.add_middleware(AuthMiddleware, token=token, broadcaster=broadcaster)
 
-    @app.get("/", include_in_schema=False)
-    def placeholder() -> HTMLResponse:
-        return HTMLResponse(PLACEHOLDER_PAGE)
-
+    _mount_ui(app, static_dir or STATIC_DIR)
     return app

@@ -1,5 +1,5 @@
 name: Payday Budget
-version: "0.1.1"
+version: "0.2.0"
 slug: payday_budget
 description: Budgeting with periods that start on payday, not on the 1st.
 url: https://github.com/ValeriGYordanov/Payday-Budget
