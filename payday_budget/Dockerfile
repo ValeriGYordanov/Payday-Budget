@@ -16,7 +16,9 @@ ENV PAYDAY_BUDGET_DATA=/data \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-CMD ["python3", "-m", "app"]
+# s6-overlay v3 clears the environment for CMD; with-contenv restores the container
+# environment (SUPERVISOR_TOKEN, TZ and the ENV values above).
+CMD ["/usr/bin/with-contenv", "python3", "-m", "app"]
 
 LABEL \
     io.hass.version="${BUILD_VERSION}" \

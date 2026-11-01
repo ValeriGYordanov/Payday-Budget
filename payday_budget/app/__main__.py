@@ -4,13 +4,17 @@ import logging
 
 import uvicorn
 
-from app import config
+from app import clock, config
 from app.main import create_app
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def main() -> None:
     base = config.data_dir()
     level = config.configure_logging(config.load_options(base).get("log_level", "info"))
+    zone = clock.local_zone()
+    _LOGGER.info("Timezone %s, today is %s", zone.key, clock.today())  # P9
     app = create_app(base)
     uvicorn.run(
         app,

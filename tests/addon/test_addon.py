@@ -341,13 +341,16 @@ def test_options_and_log_levels(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
 
 
 def test_entry_point_runs_uvicorn_for_the_addon(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     (tmp_path / "options.json").write_text('{"log_level": "warning"}')
     monkeypatch.setenv("PAYDAY_BUDGET_DATA", str(tmp_path))
+    monkeypatch.setenv("TZ", "Europe/Sofia")
     captured: dict[str, Any] = {}
     monkeypatch.setattr(uvicorn, "run", lambda app, **kw: captured.update(app=app, **kw))
-    entry.main()
+    with caplog.at_level(logging.INFO, logger="app.__main__"):
+        entry.main()
+    assert "Timezone Europe/Sofia" in caplog.text
     assert captured["host"] == "0.0.0.0"
     assert captured["port"] == 8099
     assert captured["proxy_headers"] is False
