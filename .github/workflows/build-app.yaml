@@ -1,10 +1,12 @@
 # Multi-arch app image with Home Assistant's builder actions (Docker BuildKit).
-# Test build from CI; built and pushed to GHCR when a release is published.
+# Test build from CI; built and pushed to GHCR when a release is published, or
+# when run manually (Actions → Build app → Run workflow) on the release's branch.
 name: Build app
 
 on:
   release:
     types: [published]
+  workflow_dispatch:
   workflow_call:
     inputs:
       publish:
@@ -16,7 +18,8 @@ permissions:
 
 env:
   APP: payday_budget
-  PUBLISH: ${{ github.event_name == 'release' || inputs.publish }}
+  # In a workflow_call, github.event_name is the caller's event (push / pull_request).
+  PUBLISH: ${{ github.event_name == 'release' || github.event_name == 'workflow_dispatch' || inputs.publish == true }}
 
 jobs:
   prepare:
@@ -50,6 +53,10 @@ jobs:
           URL: ${{ steps.info.outputs.url }}
           TAG: ${{ github.event.release.tag_name }}
         run: |
+          # The info action outputs JSON values (e.g. "\"1.0.0\""); decode them.
+          for var in IMAGE VERSION NAME DESCRIPTION URL; do
+            printf -v "$var" '%s' "$(jq -r . <<< "${!var}")"
+          done
           if [[ -n "$TAG" && "$TAG" != "v$VERSION" ]]; then
             echo "Release tag $TAG does not match config.yaml version $VERSION"; exit 1
           fi
@@ -107,7 +114,7 @@ jobs:
   manifest:
     name: Publish multi-arch manifest
     needs: [prepare, build]
-    if: github.event_name == 'release' || inputs.publish
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch' || inputs.publish == true
     runs-on: ubuntu-latest
     permissions:
       id-token: write
