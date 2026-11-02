@@ -14,7 +14,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any
 
-import httpx
+import httpx2
 import pytest
 import uvicorn
 from fastapi.testclient import TestClient
@@ -216,7 +216,7 @@ def test_sse_stream_emits_changed_after_write(
     monkeypatch.setattr(routes, "SSE_KEEPALIVE_SECONDS", 0.3)
     base, token = live_server
     headers = {"Authorization": f"Bearer {token}"}
-    with httpx.Client(base_url=base, headers=headers, timeout=10) as client:
+    with httpx2.Client(base_url=base, headers=headers, timeout=10) as client:
         assert (
             client.get("/api/v1/events", headers={"Authorization": "Bearer x"}).status_code == 401
         )

@@ -23,4 +23,8 @@ CMD ["/usr/bin/with-contenv", "python3", "-m", "app"]
 LABEL \
     io.hass.version="${BUILD_VERSION}" \
     io.hass.type="app" \
-    io.hass.arch="aarch64|amd64"
+    io.hass.arch="aarch64|amd64" \
+    org.opencontainers.image.title="Payday Budget" \
+    org.opencontainers.image.description="Budgeting with periods that start on payday, not on the 1st." \
+    org.opencontainers.image.source="https://github.com/ValeriGYordanov/Payday-Budget" \
+    org.opencontainers.image.licenses="MIT"

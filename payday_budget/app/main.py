@@ -121,7 +121,7 @@ def create_app(
 
     app = FastAPI(
         title="Payday Budget",
-        version="0.4.0",
+        version="1.0.0",
         lifespan=lifespan,
         docs_url=None,
         redoc_url=None,

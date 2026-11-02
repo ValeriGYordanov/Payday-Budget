@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+permissions:
+  contents: read
+
+jobs:
+  addon:
+    name: App backend (Python 3.12)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: mypy payday_budget/app payday_budget/migrations tests/addon
+      - run: pytest
+
+  integration:
+    name: Integration (Python 3.14, Home Assistant)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      # The end-to-end test runs the real app backend from .venv (Python 3.12).
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: "3.12"
+      - run: python -m venv .venv && .venv/bin/pip install -r payday_budget/requirements.txt
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: requirements-ha.txt
+      - run: python -m venv .venv-ha && .venv-ha/bin/pip install -r requirements-ha.txt
+      - run: .venv-ha/bin/mypy --config-file tests/integration/mypy.ini
+      - run: .venv-ha/bin/pytest -c tests/integration/pytest.ini tests/integration
+
+  frontend:
+    name: UI and cards
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run build # tsc + both Vite builds
+      - name: Committed bundles are up to date
+        run: |
+          git add --all --intent-to-add ../payday_budget/app/static ../custom_components/payday_budget/www
+          git diff --exit-code --stat -- ../payday_budget/app/static ../custom_components/payday_budget/www \
+            || { echo "Run 'npm run build' in frontend/ and commit the result."; exit 1; }
+      - run: npm run lint
+      - run: npm test
+
+  hassfest:
+    name: hassfest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    name: HACS validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: hacs/action@22.5.0
+        with:
+          category: integration
+          ignore: brands # no icon in home-assistant/brands yet
+
+  image:
+    name: App image
+    uses: ./.github/workflows/build-app.yaml
+    with:
+      publish: false
+    permissions:
+      contents: read
+      id-token: write
+      packages: write

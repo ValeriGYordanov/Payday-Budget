@@ -1,8 +1,10 @@
 name: Payday Budget
-version: "0.4.0"
+version: "1.0.0"
 slug: payday_budget
 description: Budgeting with periods that start on payday, not on the 1st.
 url: https://github.com/ValeriGYordanov/Payday-Budget
+# Prebuilt multi-arch image, published by .github/workflows/build-app.yaml on release.
+image: ghcr.io/valerigyordanov/payday-budget
 arch:
   - aarch64
   - amd64
