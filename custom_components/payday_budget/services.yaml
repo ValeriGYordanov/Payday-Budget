@@ -92,3 +92,108 @@ get_summary:
       default: current
       selector:
         text:
+
+list_transactions:
+  fields:
+    period:
+      example: current
+      selector:
+        text:
+    date_from:
+      selector:
+        date:
+    date_to:
+      selector:
+        date:
+    kind:
+      selector:
+        select:
+          options:
+            - income
+            - expense
+    category:
+      example: Food
+      selector:
+        text:
+    budget:
+      example: Needs
+      selector:
+        text:
+    tag:
+      selector:
+        text:
+    user:
+      selector:
+        text:
+    search:
+      selector:
+        text:
+    limit:
+      default: 100
+      selector:
+        number:
+          min: 1
+          max: 500
+          mode: box
+    offset:
+      default: 0
+      selector:
+        number:
+          min: 0
+          mode: box
+
+add_category:
+  fields:
+    name:
+      required: true
+      example: Pets
+      selector:
+        text:
+    kind:
+      required: true
+      selector:
+        select:
+          options:
+            - income
+            - expense
+    icon:
+      default: mdi:tag
+      selector:
+        icon:
+
+update_category:
+  fields:
+    category:
+      required: true
+      example: Food
+      selector:
+        text:
+    kind:
+      selector:
+        select:
+          options:
+            - income
+            - expense
+    name:
+      selector:
+        text:
+    icon:
+      selector:
+        icon:
+    archived:
+      selector:
+        boolean:
+
+delete_category:
+  fields:
+    category:
+      required: true
+      example: Food
+      selector:
+        text:
+    kind:
+      selector:
+        select:
+          options:
+            - income
+            - expense

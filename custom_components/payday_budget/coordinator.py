@@ -13,7 +13,7 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import ApiError, CannotConnect, InvalidAuth, PaydayBudgetClient
-from .const import DOMAIN, HISTORY_LIMIT, SCAN_INTERVAL, SSE_BACKOFF_MAX_SECONDS
+from .const import DOMAIN, HISTORY_LIMIT, RECENT_LIMIT, SCAN_INTERVAL, SSE_BACKOFF_MAX_SECONDS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,6 +27,9 @@ class PaydayBudgetData:
     budgets: list[dict[str, Any]]
     period_count: int
     history: list[dict[str, Any]]
+    categories: list[dict[str, Any]]
+    recent: list[dict[str, Any]]  # newest RECENT_LIMIT transactions, any period
+    current_count: int | None  # transactions in the current period; None without one
 
     @property
     def currency(self) -> str:
@@ -64,18 +67,23 @@ class PaydayBudgetCoordinator(DataUpdateCoordinator[PaydayBudgetData]):
 
     async def _async_update_data(self) -> PaydayBudgetData:
         try:
-            settings, budgets, periods, history = await asyncio.gather(
+            settings, budgets, periods, history, categories, recent = await asyncio.gather(
                 self.client.get("settings"),
                 self.client.get("budgets"),
                 self.client.get("periods"),
                 self.client.get("periods/history", limit=HISTORY_LIMIT),
+                self.client.get("categories"),
+                self.client.get("transactions", limit=RECENT_LIMIT),
             )
             try:
-                summary = await self.client.get("summary", period="current")
+                summary, current = await asyncio.gather(
+                    self.client.get("summary", period="current"),
+                    self.client.get("transactions", period="current", limit=1),
+                )
             except ApiError as err:
                 if err.status != 404:
                     raise
-                summary = None
+                summary = current = None
         except InvalidAuth as err:
             raise ConfigEntryAuthFailed("The add-on rejected the token") from err
         except (CannotConnect, ApiError) as err:
@@ -86,6 +94,9 @@ class PaydayBudgetCoordinator(DataUpdateCoordinator[PaydayBudgetData]):
             budgets=budgets["items"],
             period_count=len(periods["items"]),
             history=history["items"],
+            categories=categories["items"],
+            recent=recent["items"],
+            current_count=None if current is None else int(current["total"]),
         )
 
     async def listen(self) -> None:

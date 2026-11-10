@@ -11,7 +11,10 @@
       "budget_target": { "default": "mdi:target" },
       "budget_spent": { "default": "mdi:cart-outline" },
       "budget_remaining": { "default": "mdi:wallet" },
-      "budget_used": { "default": "mdi:percent" }
+      "budget_used": { "default": "mdi:percent" },
+      "recent_transactions": { "default": "mdi:format-list-bulleted" },
+      "categories": { "default": "mdi:shape-outline" },
+      "budgets": { "default": "mdi:wallet-outline" }
     },
     "binary_sensor": {
       "budget_over_target": { "default": "mdi:check-circle-outline", "state": { "on": "mdi:alert-circle" } }
@@ -25,6 +28,10 @@
     "update_transaction": { "service": "mdi:pencil" },
     "delete_transaction": { "service": "mdi:delete" },
     "start_period": { "service": "mdi:calendar-plus" },
-    "get_summary": { "service": "mdi:chart-box" }
+    "get_summary": { "service": "mdi:chart-box" },
+    "list_transactions": { "service": "mdi:format-list-bulleted" },
+    "add_category": { "service": "mdi:shape-plus" },
+    "update_category": { "service": "mdi:shape-outline" },
+    "delete_category": { "service": "mdi:delete" }
   }
 }

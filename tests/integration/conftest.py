@@ -59,6 +59,54 @@ def budget_row(
     }
 
 
+def category(
+    category_id: int, name: str, kind: str, icon: str, *, archived: bool = False, count: int = 0
+) -> dict[str, Any]:
+    return {
+        "id": category_id,
+        "name": name,
+        "kind": kind,
+        "icon": icon,
+        "archived": archived,
+        "transaction_count": count,
+    }
+
+
+def transaction(
+    transaction_id: int,
+    date: str,
+    kind: str,
+    amount_minor: int,
+    category_id: int,
+    category_name: str,
+    budget_id: int | None,
+    budget_name: str | None,
+    *,
+    tags: list[str] | None = None,
+    rule: int | None = None,
+) -> dict[str, Any]:
+    """A transaction as the add-on's API returns it."""
+    return {
+        "id": transaction_id,
+        "kind": kind,
+        "amount_minor": amount_minor,
+        "date": date,
+        "period_id": 2,
+        "category_id": category_id,
+        "category_name": category_name,
+        "budget_id": budget_id,
+        "budget_name": budget_name,
+        "description": None if rule else "Lidl",
+        "tags": tags or [],
+        "recurring_rule_id": rule,
+        "occurrence_date": date if rule else None,
+        "created_by_id": None if rule else "user-1",
+        "created_by_name": None if rule else "Valeri",
+        "created_at": "",
+        "updated_at": "",
+    }
+
+
 class FakeAddon:
     """In-memory stand-in for the add-on REST API (§6.4)."""
 
@@ -82,10 +130,20 @@ class FakeAddon:
                 "created_at": "",
             },
         ]
+        # The add-on's order: kind (expense first), then name.
         self.categories = [
-            {"id": 10, "name": "Salary", "kind": "income", "icon": "mdi:cash", "archived": False},
-            {"id": 11, "name": "Food", "kind": "expense", "icon": "mdi:food", "archived": False},
+            category(11, "Food", "expense", "mdi:food", count=3),
+            category(10, "Salary", "income", "mdi:cash", count=1),
         ]
+        self.tags = [{"id": 30, "name": "groceries"}]
+        # GET /transactions: these newest first; `total` of the current period.
+        self.listing = [
+            transaction(
+                8, "2026-11-02", "expense", 4550, 11, "Food", 1, "Needs", tags=["groceries"]
+            ),
+            transaction(7, "2026-11-01", "income", 300000, 10, "Salary", None, None, rule=5),
+        ]
+        self.current_total = 2
         self.periods = [PERIOD_CURRENT, PERIOD_PREVIOUS]  # newest first, like the API
         self.summary: dict[str, Any] | None = {
             "period": PERIOD_CURRENT,
@@ -134,7 +192,24 @@ class FakeAddon:
                 return {"items": copy.deepcopy(self.budgets)}
             if path == "categories":
                 kind = params.get("kind")
-                return {"items": [c for c in self.categories if kind in (None, c["kind"])]}
+                return {
+                    "items": [
+                        copy.deepcopy(c) for c in self.categories if kind in (None, c["kind"])
+                    ]
+                }
+            if path == "tags":
+                return {"items": copy.deepcopy(self.tags)}
+            if path == "transactions":
+                if params.get("period") == "current" and self.summary is None:
+                    raise ApiError(404, "not_found", "Current period not found", "period")
+                limit, offset = int(params.get("limit", 50)), int(params.get("offset", 0))
+                total = self.current_total if params.get("period") == "current" else None
+                return {
+                    "items": copy.deepcopy(self.listing[offset : offset + limit]),
+                    "total": len(self.listing) if total is None else total,
+                    "limit": limit,
+                    "offset": offset,
+                }
             if path == "periods":
                 return {"items": copy.deepcopy(self.periods)}
             if path == "periods/history":
@@ -152,7 +227,16 @@ class FakeAddon:
         if method == "PATCH" and path.startswith("transactions/"):
             return {"id": int(path.split("/")[1]), **json}
         if method == "DELETE":
+            if path.startswith("categories/"):
+                self.categories = [c for c in self.categories if c["id"] != int(path.split("/")[1])]
             return None
+        if method == "POST" and path == "categories":
+            self.categories.append(category(40, json["name"], json["kind"], json["icon"]))
+            return copy.deepcopy(self.categories[-1])
+        if method == "PATCH" and path.startswith("categories/"):
+            found = next(c for c in self.categories if c["id"] == int(path.split("/")[1]))
+            found.update(json)
+            return copy.deepcopy(found)
         if method == "POST" and path == "periods":
             return {"id": 3, "name": json.get("name", "December 2026")}
         raise AssertionError(f"unexpected call {method} {path}")

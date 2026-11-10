@@ -16,3 +16,4 @@ SSE_BACKOFF_MAX_SECONDS: Final = 60
 SSE_READ_TIMEOUT_SECONDS: Final = 90  # the add-on sends a keepalive every 25 s
 
 HISTORY_LIMIT: Final = 12
+RECENT_LIMIT: Final = 10  # v1.1 §9 D1: newest N transactions in the sensor

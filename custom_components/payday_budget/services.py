@@ -15,10 +15,14 @@ from .const import DOMAIN
 from .coordinator import PaydayBudgetConfigEntry
 from .helpers import (
     actor_for,
+    find_category,
     raise_for,
     resolve_budget,
     resolve_category,
+    resolve_category_for_update,
     resolve_period,
+    resolve_tag,
+    transaction_item,
 )
 from .money import parse_amount, to_str
 
@@ -59,6 +63,45 @@ START_PERIOD_SCHEMA = probatio.Schema(
     }
 )
 SUMMARY_SCHEMA = probatio.Schema({probatio.Optional("period", default="current"): cv.string})
+LIST_SCHEMA = probatio.Schema(
+    {
+        probatio.Optional("period"): cv.string,
+        probatio.Optional("date_from"): cv.date,
+        probatio.Optional("date_to"): cv.date,
+        probatio.Optional("kind"): KINDS,
+        probatio.Optional("category"): ID_OR_NAME,
+        probatio.Optional("budget"): ID_OR_NAME,
+        probatio.Optional("tag"): ID_OR_NAME,
+        probatio.Optional("user"): cv.string,
+        probatio.Optional("search"): cv.string,
+        probatio.Optional("limit", default=100): probatio.All(
+            probatio.Coerce(int), probatio.Range(min=1, max=500)
+        ),
+        probatio.Optional("offset", default=0): probatio.All(
+            probatio.Coerce(int), probatio.Range(min=0)
+        ),
+    }
+)
+CATEGORY_NAME = probatio.All(cv.string, probatio.Length(min=1, max=100))
+ADD_CATEGORY_SCHEMA = probatio.Schema(
+    {
+        probatio.Required("name"): CATEGORY_NAME,
+        probatio.Required("kind"): KINDS,
+        probatio.Optional("icon", default="mdi:tag"): cv.string,
+    }
+)
+UPDATE_CATEGORY_SCHEMA = probatio.Schema(
+    {
+        probatio.Required("category"): ID_OR_NAME,
+        probatio.Optional("kind"): KINDS,
+        probatio.Optional("name"): CATEGORY_NAME,
+        probatio.Optional("icon"): cv.string,
+        probatio.Optional("archived"): cv.boolean,
+    }
+)
+DELETE_CATEGORY_SCHEMA = probatio.Schema(
+    {probatio.Required("category"): ID_OR_NAME, probatio.Optional("kind"): KINDS}
+)
 
 
 def _entry(hass: HomeAssistant) -> PaydayBudgetConfigEntry:
@@ -214,6 +257,84 @@ async def _get_summary(call: ServiceCall) -> ServiceResponse:
     return summary_response(summary)
 
 
+async def _list_transactions(call: ServiceCall) -> ServiceResponse:
+    """v1.1 §4.3 (TL1): each filter maps to the add-on's filter of the same meaning."""
+    entry = _entry(call.hass)
+    client = entry.runtime_data.client
+    data = call.data
+    params: dict[str, Any] = {"limit": data["limit"], "offset": data["offset"]}
+    try:
+        if "period" in data:
+            params["period"] = await resolve_period(client, data["period"])
+        for field in ("date_from", "date_to"):
+            if field in data:
+                params[field] = data[field].isoformat()
+        if "kind" in data:
+            params["kind"] = data["kind"]
+        if "category" in data:
+            params["category"] = await resolve_category(client, data["category"], data.get("kind"))
+        if "budget" in data:
+            params["budget"] = await resolve_budget(client, data["budget"])
+        if "tag" in data:
+            params["tag"] = await resolve_tag(client, data["tag"])
+        if "user" in data:
+            params["user"] = data["user"]
+        if "search" in data:
+            params["q"] = data["search"]
+        result = await client.get("transactions", **params)
+    except PaydayBudgetError as err:
+        raise_for(err)
+    coordinator_data = entry.runtime_data.coordinator.data
+    return {
+        "total": result["total"],
+        "limit": result["limit"],
+        "offset": result["offset"],
+        "items": [
+            transaction_item(t, coordinator_data.currency, coordinator_data.minor_unit)
+            for t in result["items"]
+        ],
+    }
+
+
+async def _add_category(call: ServiceCall) -> ServiceResponse:
+    entry = _entry(call.hass)
+    body = {"name": call.data["name"], "kind": call.data["kind"], "icon": call.data["icon"]}
+    try:
+        result = await entry.runtime_data.client.request("POST", "categories", json=body)
+    except PaydayBudgetError as err:
+        raise_for(err)
+    await entry.runtime_data.coordinator.async_request_refresh()
+    return {"id": result["id"]}
+
+
+async def _update_category(call: ServiceCall) -> ServiceResponse:
+    entry = _entry(call.hass)
+    client = entry.runtime_data.client
+    try:
+        category, kind_changes = await resolve_category_for_update(
+            client, call.data["category"], call.data.get("kind")
+        )
+        body = {f: call.data[f] for f in ("name", "icon", "archived") if f in call.data}
+        if kind_changes:
+            body["kind"] = call.data["kind"]
+        result = await client.request("PATCH", f"categories/{category['id']}", json=body)
+    except PaydayBudgetError as err:
+        raise_for(err)
+    await entry.runtime_data.coordinator.async_request_refresh()
+    return {"id": result["id"]}
+
+
+async def _delete_category(call: ServiceCall) -> None:
+    entry = _entry(call.hass)
+    client = entry.runtime_data.client
+    try:
+        category = await find_category(client, call.data["category"], call.data.get("kind"))
+        await client.request("DELETE", f"categories/{category['id']}")
+    except PaydayBudgetError as err:
+        raise_for(err)
+    await entry.runtime_data.coordinator.async_request_refresh()
+
+
 def async_register_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN, "add_transaction", _add, ADD_SCHEMA, SupportsResponse.OPTIONAL
@@ -227,4 +348,20 @@ def async_register_services(hass: HomeAssistant) -> None:
     )
     hass.services.async_register(
         DOMAIN, "get_summary", _get_summary, SUMMARY_SCHEMA, SupportsResponse.ONLY
+    )
+    hass.services.async_register(
+        DOMAIN, "list_transactions", _list_transactions, LIST_SCHEMA, SupportsResponse.ONLY
+    )
+    hass.services.async_register(
+        DOMAIN, "add_category", _add_category, ADD_CATEGORY_SCHEMA, SupportsResponse.OPTIONAL
+    )
+    hass.services.async_register(
+        DOMAIN,
+        "update_category",
+        _update_category,
+        UPDATE_CATEGORY_SCHEMA,
+        SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN, "delete_category", _delete_category, DELETE_CATEGORY_SCHEMA
     )

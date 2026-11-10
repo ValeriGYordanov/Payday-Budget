@@ -14,6 +14,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import PaydayBudgetConfigEntry, PaydayBudgetCoordinator
 from .entity import BudgetEntity, PaydayBudgetEntity, track_budget_entities
+from .helpers import transaction_item
 from .money import to_decimal, to_str
 
 PARALLEL_UPDATES = 0
@@ -34,6 +35,9 @@ async def async_setup_entry(
             TotalSensor(coordinator, "balance", "balance_minor"),
             UnallocatedSensor(coordinator),
             HistorySensor(coordinator),
+            RecentTransactionsSensor(coordinator),
+            CategoriesSensor(coordinator),
+            BudgetsSensor(coordinator),
         ]
     )
 
@@ -166,6 +170,67 @@ class HistorySensor(PaydayBudgetEntity, SensorEntity):
                 for item in self.coordinator.data.history
             ]
         }
+
+
+class RecentTransactionsSensor(PaydayBudgetEntity, SensorEntity):
+    """v1.1 §4.1. State: transactions in the current period (RT3). Newest N not recorded."""
+
+    _attr_translation_key = "recent_transactions"
+    _unrecorded_attributes = frozenset({"transactions"})
+
+    def __init__(self, coordinator: PaydayBudgetCoordinator) -> None:
+        super().__init__(coordinator, "recent_transactions")
+
+    @property
+    def native_value(self) -> int | None:
+        return self.coordinator.data.current_count
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        data = self.coordinator.data
+        return {
+            "transactions": [
+                transaction_item(t, data.currency, data.minor_unit) for t in data.recent
+            ]
+        }
+
+
+class CategoriesSensor(PaydayBudgetEntity, SensorEntity):
+    """v1.1 §4.2. State: non-archived categories; all of them in the app's order (D10)."""
+
+    _attr_translation_key = "categories"
+    _unrecorded_attributes = frozenset({"categories"})
+
+    def __init__(self, coordinator: PaydayBudgetCoordinator) -> None:
+        super().__init__(coordinator, "categories")
+
+    @property
+    def native_value(self) -> int:
+        return sum(1 for c in self.coordinator.data.categories if not c["archived"])
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        fields = ("id", "name", "kind", "icon", "archived", "transaction_count")
+        return {"categories": [{f: c[f] for f in fields} for c in self.coordinator.data.categories]}
+
+
+class BudgetsSensor(PaydayBudgetEntity, SensorEntity):
+    """v1.1 §4.5 (BS1). State: non-archived budgets; all of them in the app's order."""
+
+    _attr_translation_key = "budgets"
+    _unrecorded_attributes = frozenset({"budgets"})
+
+    def __init__(self, coordinator: PaydayBudgetCoordinator) -> None:
+        super().__init__(coordinator, "budgets")
+
+    @property
+    def native_value(self) -> int:
+        return len(self.coordinator.data.active_budgets())
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        fields = ("id", "name", "percent", "archived", "sort_order")
+        return {"budgets": [{f: b[f] for f in fields} for b in self.coordinator.data.budgets]}
 
 
 class BudgetAmountSensor(BudgetEntity, MoneySensor):

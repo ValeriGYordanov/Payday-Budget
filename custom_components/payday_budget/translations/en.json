@@ -72,6 +72,15 @@
       },
       "budget_used": {
         "name": "{budget} used"
+      },
+      "recent_transactions": {
+        "name": "Recent transactions"
+      },
+      "categories": {
+        "name": "Categories"
+      },
+      "budgets": {
+        "name": "Budgets"
       }
     },
     "binary_sensor": {
@@ -104,8 +113,23 @@
     "unknown_category": {
       "message": "No {kind} category named or numbered {category}."
     },
+    "unknown_category_any": {
+      "message": "No category named or numbered {category}."
+    },
+    "ambiguous_category": {
+      "message": "More than one category matches {category}; give the kind or use the id."
+    },
     "unknown_budget": {
       "message": "No budget named or numbered {budget}."
+    },
+    "ambiguous_budget": {
+      "message": "More than one budget matches {budget}; use the id."
+    },
+    "unknown_tag": {
+      "message": "No tag named or numbered {tag}."
+    },
+    "ambiguous_tag": {
+      "message": "More than one tag matches {tag}; use the id."
     },
     "no_previous_period": {
       "message": "There is no previous period."
@@ -218,6 +242,114 @@
         "period": {
           "name": "Period",
           "description": "current, previous or a period id."
+        }
+      }
+    },
+    "list_transactions": {
+      "name": "List transactions",
+      "description": "Returns transactions matching the filters, newest first.",
+      "fields": {
+        "period": {
+          "name": "Period",
+          "description": "current, previous or a period id."
+        },
+        "date_from": {
+          "name": "From",
+          "description": "First date, inclusive."
+        },
+        "date_to": {
+          "name": "To",
+          "description": "Last date, inclusive."
+        },
+        "kind": {
+          "name": "Kind",
+          "description": "income or expense."
+        },
+        "category": {
+          "name": "Category",
+          "description": "Category name or id; a name in both kinds needs kind."
+        },
+        "budget": {
+          "name": "Budget",
+          "description": "Budget name or id."
+        },
+        "tag": {
+          "name": "Tag",
+          "description": "Tag name or id."
+        },
+        "user": {
+          "name": "User",
+          "description": "Home Assistant user id that created the transaction."
+        },
+        "search": {
+          "name": "Search",
+          "description": "Text in the description (case-insensitive)."
+        },
+        "limit": {
+          "name": "Limit",
+          "description": "1 to 500. Defaults to 100."
+        },
+        "offset": {
+          "name": "Offset",
+          "description": "Transactions to skip. Defaults to 0."
+        }
+      }
+    },
+    "add_category": {
+      "name": "Add category",
+      "description": "Adds an income or expense category.",
+      "fields": {
+        "name": {
+          "name": "Name",
+          "description": "Unique within its kind."
+        },
+        "kind": {
+          "name": "Kind",
+          "description": "income or expense."
+        },
+        "icon": {
+          "name": "Icon",
+          "description": "An mdi icon. Defaults to mdi:tag."
+        }
+      }
+    },
+    "update_category": {
+      "name": "Update category",
+      "description": "Renames, re-icons, archives or changes the kind of a category.",
+      "fields": {
+        "category": {
+          "name": "Category",
+          "description": "Category name or id."
+        },
+        "kind": {
+          "name": "Kind",
+          "description": "Picks the category when its name exists in both kinds; otherwise changes its kind (only without transactions)."
+        },
+        "name": {
+          "name": "New name",
+          "description": "Unique within its kind."
+        },
+        "icon": {
+          "name": "Icon",
+          "description": "An mdi icon."
+        },
+        "archived": {
+          "name": "Archived",
+          "description": "Archived categories cannot be used for new transactions."
+        }
+      }
+    },
+    "delete_category": {
+      "name": "Delete category",
+      "description": "Deletes a category without transactions; archive it otherwise.",
+      "fields": {
+        "category": {
+          "name": "Category",
+          "description": "Category name or id."
+        },
+        "kind": {
+          "name": "Kind",
+          "description": "Needed when the name exists in both kinds."
         }
       }
     }

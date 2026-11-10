@@ -205,3 +205,120 @@ async def test_end_to_end(
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+async def test_end_to_end_transactions_and_categories(
+    hass: HomeAssistant, real_addon: RealAddon
+) -> None:
+    """v1.1: the new sensors and actions against the real add-on."""
+    host, port = real_addon.base.removeprefix("http://").split(":")
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=DOMAIN,
+        data={CONF_HOST: host, CONF_PORT: int(port), CONF_TOKEN: real_addon.token},
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    # Back-to-back actions here; HA's 10 s refresh cooldown would only slow the test down.
+    entry.runtime_data.coordinator._debounced_refresh.cooldown = 0.1
+
+    def attr(entity_id: str, name: str) -> Any:
+        current = hass.states.get(entity_id)
+        return current.attributes.get(name) if current else None
+
+    def state(entity_id: str) -> str | None:
+        current = hass.states.get(entity_id)
+        return current.state if current else None
+
+    async def call(service: str, data: dict[str, Any], response: bool = False) -> Any:
+        return await hass.services.async_call(
+            DOMAIN, service, data, blocking=True, return_response=response
+        )
+
+    def category(name: str) -> dict[str, Any] | None:
+        items = attr("sensor.payday_budget_categories", "categories") or []
+        return next((c for c in items if c["name"] == name), None)
+
+    assert state("sensor.payday_budget_recent_transactions") == "0"
+    assert state("sensor.payday_budget_budgets") == "2"
+    assert attr("sensor.payday_budget_budgets", "budgets")[0] == {
+        "id": 1,
+        "name": "Needs",
+        "percent": "60.00",
+        "archived": False,
+        "sort_order": 0,
+    }
+
+    await call("add_transaction", {"kind": "income", "amount": "1000", "category": "Salary"})
+    await call(
+        "add_transaction",
+        {
+            "kind": "expense",
+            "amount": "25.50",
+            "category": "food",
+            "budget": "needs",
+            "description": "Lidl",
+            "tags": ["groceries"],
+        },
+    )
+    await _wait_for(
+        hass, lambda: state("sensor.payday_budget_recent_transactions") == "2", timeout=15
+    )
+    newest = attr("sensor.payday_budget_recent_transactions", "transactions")[0]
+    assert {k: newest[k] for k in ("kind", "amount", "currency", "category", "budget", "tags")} == {
+        "kind": "expense",
+        "amount": "25.50",
+        "currency": "EUR",
+        "category": "Food",
+        "budget": "Needs",
+        "tags": ["groceries"],
+    }
+    assert category("Food")["transaction_count"] == 1
+
+    listed = await call(
+        "list_transactions",
+        {
+            "period": "current",
+            "kind": "expense",
+            "category": "FOOD",
+            "tag": "groceries",
+            "search": "lid",
+        },
+        response=True,
+    )
+    assert (listed["total"], listed["limit"], listed["offset"]) == (1, 100, 0)
+    assert listed["items"] == [newest]
+    assert (await call("list_transactions", {"limit": 1}, response=True))["total"] == 2
+    with pytest.raises(ServiceValidationError) as err:
+        await call("list_transactions", {"period": "previous"}, response=True)
+    assert err.value.translation_key == "no_previous_period"
+
+    added = await call("add_category", {"name": "Pets", "kind": "expense"}, response=True)
+    await _wait_for(hass, lambda: category("Pets") is not None, timeout=15)
+    assert category("Pets")["icon"] == "mdi:tag"
+    await call("update_category", {"category": "pets", "name": "Animals", "icon": "mdi:dog"})
+    await _wait_for(hass, lambda: category("Animals") is not None, timeout=15)
+    assert category("Animals")["id"] == added["id"]
+    count = int(state("sensor.payday_budget_categories") or 0)
+    await call("update_category", {"category": "Animals", "archived": True})
+    await _wait_for(
+        hass, lambda: state("sensor.payday_budget_categories") == str(count - 1), timeout=15
+    )
+    assert category("Animals")["archived"] is True
+
+    with pytest.raises(ServiceValidationError) as err:
+        await call("delete_category", {"category": "Food"})
+    assert err.value.translation_placeholders["code"] == "C2"
+    with pytest.raises(ServiceValidationError) as err:
+        await call("update_category", {"category": "Food", "kind": "income"})
+    assert err.value.translation_placeholders["code"] == "C1"
+    with pytest.raises(ServiceValidationError) as err:
+        await call("add_category", {"name": "Food", "kind": "expense"})
+    assert err.value.translation_placeholders["code"] == "conflict"
+
+    await call("delete_category", {"category": "Animals"})
+    await _wait_for(hass, lambda: category("Animals") is None, timeout=15)
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
