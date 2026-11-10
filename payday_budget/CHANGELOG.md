@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.0
+
+- Categories in the API carry `transaction_count`, so it is clear which ones
+  can be deleted.
+- Integration: sensors for recent transactions, categories and budgets; the
+  `list_transactions` action with filters; actions to add, update, archive and
+  delete categories.
+- Integration: a category, budget or tag name that matches more than one item
+  is now an error instead of picking the first match.
+
 ## 1.0.0
 
 First release.

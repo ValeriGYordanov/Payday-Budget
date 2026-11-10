@@ -9,7 +9,7 @@ It has two parts:
 | Part | What it does |
 |---|---|
 | **App (add-on)** | Stores everything (SQLite), runs recurring transactions, and gives you the full UI in the Home Assistant sidebar. |
-| **Integration (HACS)** | Sensors, binary sensors, a "start new period" button, actions for automations, and four dashboard cards. |
+| **Integration (HACS)** | Sensors, binary sensors, a "start new period" button, actions for transactions and categories, and four dashboard cards. |
 
 Requires Home Assistant OS or Supervised (for the app) and Home Assistant 2026.10 or newer.
 
@@ -64,10 +64,31 @@ All on one device, **Payday Budget**.
 | `sensor.payday_budget_<budget>_used` | % of the target used (unavailable when the target is 0) |
 | `binary_sensor.payday_budget_<budget>_over_target` | On when spent > target |
 | `sensor.payday_budget_history` | Number of periods; attribute `history` with the last 12 |
+| `sensor.payday_budget_recent_transactions` | Transactions in the current period; attribute `transactions` with the newest 10 |
+| `sensor.payday_budget_categories` | Active categories; attribute `categories` with all of them, archived ones included |
+| `sensor.payday_budget_budgets` | Active budgets; attribute `budgets` with all of them, archived ones included |
 | `button.payday_budget_start_new_period` | Starts a period dated today |
 
 Amount sensors have no `state_class`: Home Assistant's long-term statistics are
-calendar-based and don't fit periods.
+calendar-based and don't fit periods. The list attributes are not recorded.
+
+A transaction in `transactions` (and in `list_transactions`):
+
+```yaml
+id: 42
+date: "2026-11-02"
+kind: expense
+amount: "25.50"        # exact decimal string
+currency: EUR
+category: Food
+category_id: 4
+budget: Needs          # null for incomes
+budget_id: 1
+description: Lidl
+tags: [groceries]
+created_by: Valeri     # null for automations and recurring transactions
+recurring: false
+```
 
 ## Actions
 
@@ -90,6 +111,26 @@ data:
 | `payday_budget.delete_transaction` | `id` | — |
 | `payday_budget.start_period` | `date`, `name` (both optional) | `{id, name}` |
 | `payday_budget.get_summary` | `period`: `current` (default), `previous` or an id | income, expenses, budgets… |
+| `payday_budget.list_transactions` | `period`, `date_from`, `date_to`, `kind`, `category`, `budget`, `tag`, `user`, `search`, `limit` (1–500, default 100), `offset` — all optional | `{total, limit, offset, items}` |
+| `payday_budget.add_category` | `name`, `kind`, `icon` (default `mdi:tag`) | `{id}` |
+| `payday_budget.update_category` | `category`, then any of `kind`, `name`, `icon`, `archived` | `{id}` |
+| `payday_budget.delete_category` | `category`, `kind` (when the name exists in both kinds) | — |
+
+```yaml
+action: payday_budget.list_transactions
+data:
+  period: current
+  kind: expense
+  category: Food
+  search: lidl
+response_variable: result   # result.items, result.total
+```
+
+Names match case-insensitively. A name that matches more than one category,
+budget or tag is an error; give `kind` (categories) or use the id. In
+`update_category`, `kind` picks the category when its name exists in both kinds;
+otherwise it changes the category's kind (only while it has no transactions).
+A category with transactions cannot be deleted; archive it instead.
 
 Rule violations raise an error that starts with the rule ID, e.g.
 `P6: Transactions before the first period are not allowed`.
