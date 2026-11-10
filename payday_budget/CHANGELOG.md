@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.2.0
+
+- Budgets have a direction: negative (spend at most) or positive (reach at
+  least, e.g. savings). Positive budgets below target show a warning, above it
+  they are green. New binary sensor `<budget>_on_track`.
+- Reminders: for bills that repeat with a different amount. Each due date shows
+  a banner in the app, a Home Assistant notification and, optionally, a push to
+  your phone (integration options); record it pre-filled or ignore it. New
+  sensor `reminders` and actions `record_reminder` / `dismiss_reminder`.
+- Backup: export everything to a zip and restore it (Settings, or the setup
+  wizard on a new install), with a preview before anything is replaced.
+- Suggestions when adding a transaction: the budget you usually use with the
+  category, and your previous descriptions.
+- Database migrations now run all-or-nothing.
+
 ## 1.1.0
 
 - Categories in the API carry `transaction_count`, so it is clear which ones

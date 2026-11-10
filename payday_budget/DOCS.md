@@ -31,6 +31,27 @@ ordinary budget: move money to savings by adding an expense with that budget.
 Weekly, monthly or yearly, every N weeks/months/years. They are created on
 start and daily at 00:05; days the add-on was off are caught up.
 
+## Budget direction
+
+Each budget is **negative** (spend at most this share of income; going over is
+bad) or **positive** (reach at least this share, e.g. savings or investing;
+going over is good). Like the percentage, the direction is kept per period.
+
+## Reminders
+
+**Recurring → Reminders**: for bills that repeat with a different amount (e.g.
+electricity). On each due date the reminder appears as a banner on every page,
+pre-filled with what you set (category, budget, amount if known). Record it or
+ignore it. A new reminder starts with its latest due date only; due dates
+before your first period are skipped.
+
+## Backup and restore
+
+**Settings → Backup → Export** downloads everything as a zip (one CSV per table).
+**Restore from backup** checks the file first and shows what it contains; nothing
+changes until you press **Replace all data**. On a new install, the setup wizard
+offers the same restore. Home Assistant backups include the add-on's data too.
+
 ## Integration
 
 Install **Payday Budget** from HACS. Home Assistant discovers the add-on

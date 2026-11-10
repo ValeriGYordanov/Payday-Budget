@@ -9031,4 +9031,4 @@ for (let [e, n, r, i] of Pu) t(e, n), window.customCards.some((t) => t.type === 
 	description: i,
 	preview: !1
 });
-customElements.whenDefined("home-assistant").then(n), console.info("%c PAYDAY-BUDGET-CARDS %c 1.1.0 ", "color:white;background:#0288d1", "");
+customElements.whenDefined("home-assistant").then(n), console.info("%c PAYDAY-BUDGET-CARDS %c 1.2.0 ", "color:white;background:#0288d1", "");

@@ -112,9 +112,10 @@ def test_EX1_export_contains_every_table_and_a_manifest(ready: Api) -> None:
             )
         ),
     }
+    app: Any = ready.client.app
     assert (manifest["format"], manifest["app_version"], manifest["currency"]) == (
         1,
-        "1.1.0",
+        app.version,
         "EUR",
     )
     assert manifest["counts"]["transactions"] == len(_rows(response.content, "transactions"))

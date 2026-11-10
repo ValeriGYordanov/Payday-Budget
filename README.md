@@ -48,6 +48,15 @@ token from **Budget → Settings → Integration token**.
   changes the current period and future ones; past periods stay as they were.
 - **Target** = period income × budget %. **Remaining** = target − spent (can be
   negative). Unallocated = what is not assigned to any budget.
+- A budget is **negative** (spend at most its share; going over is bad, e.g.
+  Needs) or **positive** (reach at least its share; going over is good, e.g.
+  Savings). Bars show over (red), below target (amber) and met (green).
+- **Reminders** repeat like recurring transactions but don't create anything:
+  on the due date they ask you to record the transaction (e.g. an electricity
+  bill whose amount changes) or to ignore it. They show as a banner in the app,
+  a Home Assistant notification and, optionally, a push to your phone.
+- **Backup**: Settings → Backup exports everything to a zip, and restores it
+  (also from the setup wizard on a new install). Restoring replaces all data.
 - Money is stored as integer minor units (cents); there are no floats anywhere.
 
 ## Entities
@@ -63,10 +72,12 @@ All on one device, **Payday Budget**.
 | `sensor.payday_budget_<budget>_target` / `_spent` / `_remaining` | Amounts per budget |
 | `sensor.payday_budget_<budget>_used` | % of the target used (unavailable when the target is 0) |
 | `binary_sensor.payday_budget_<budget>_over_target` | On when spent > target |
+| `binary_sensor.payday_budget_<budget>_on_track` | On when a negative budget is within its target or a positive one has reached it; attributes `direction`, `status` |
 | `sensor.payday_budget_history` | Number of periods; attribute `history` with the last 12 |
 | `sensor.payday_budget_recent_transactions` | Transactions in the current period; attribute `transactions` with the newest 10 |
 | `sensor.payday_budget_categories` | Active categories; attribute `categories` with all of them, archived ones included |
-| `sensor.payday_budget_budgets` | Active budgets; attribute `budgets` with all of them, archived ones included |
+| `sensor.payday_budget_budgets` | Active budgets; attribute `budgets` with all of them (incl. `direction`), archived ones included |
+| `sensor.payday_budget_reminders` | Due reminders; attribute `reminders` (`id`, `name`, `due_date`, `amount` or null…) |
 | `button.payday_budget_start_new_period` | Starts a period dated today |
 
 Amount sensors have no `state_class`: Home Assistant's long-term statistics are
@@ -115,6 +126,8 @@ data:
 | `payday_budget.add_category` | `name`, `kind`, `icon` (default `mdi:tag`) | `{id}` |
 | `payday_budget.update_category` | `category`, then any of `kind`, `name`, `icon`, `archived` | `{id}` |
 | `payday_budget.delete_category` | `category`, `kind` (when the name exists in both kinds) | — |
+| `payday_budget.record_reminder` | `occurrence` (an `id` from the reminders sensor), then any of `amount`, `category`, `budget`, `date`, `description`, `tags`; the rest comes from the reminder | `{transaction_id}` |
+| `payday_budget.dismiss_reminder` | `occurrence` | — |
 
 ```yaml
 action: payday_budget.list_transactions
@@ -134,6 +147,14 @@ A category with transactions cannot be deleted; archive it instead.
 
 Rule violations raise an error that starts with the rule ID, e.g.
 `P6: Transactions before the first period are not allowed`.
+
+### Reminder notifications
+
+Each due reminder shows a Home Assistant notification until it is recorded or
+ignored. To also get a push on your phone: **Settings → Devices & services →
+Payday Budget → Configure**, and pick your `mobile_app_…` notify service. Each
+reminder is pushed once, when it becomes due (just after midnight for
+scheduled ones), with a link to the app.
 
 ## Dashboard cards
 
