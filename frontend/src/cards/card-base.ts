@@ -48,6 +48,7 @@ export abstract class PaydayCard extends LitElement {
       --pb-primary: var(--primary-color);
       --pb-positive: var(--success-color, #43a047);
       --pb-negative: var(--error-color, #db4437);
+      --pb-warning: var(--warning-color, #ffa600);
       --pb-chart-1: var(--primary-color, #03a9f4);
       --pb-chart-2: #ff9800;
       --pb-chart-3: #9c27b0;

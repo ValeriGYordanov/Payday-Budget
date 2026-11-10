@@ -23,6 +23,9 @@ def test_summary_shape(ready: Api) -> None:
         "remaining_minor",
         "percent_used",
         "over_target",
+        "direction",
+        "status",
+        "on_track",
     }
 
 

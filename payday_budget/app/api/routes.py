@@ -182,7 +182,12 @@ def list_budgets(session: SessionDep) -> dict[str, Any]:
 @router.post("/budgets", status_code=201)
 def create_budget(body: BudgetCreate, session: SessionDep, today: TodayDep) -> dict[str, Any]:
     budget = budgets.create(
-        session, name=body.name, percent=body.percent, sort_order=body.sort_order, today=today
+        session,
+        name=body.name,
+        percent=body.percent,
+        direction=body.direction,
+        sort_order=body.sort_order,
+        today=today,
     )
     session.commit()
     return budgets.serialize(budget)

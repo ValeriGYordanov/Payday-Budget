@@ -127,8 +127,8 @@ def _check_start_date(
         raise RuleViolation("P2", "A period already starts on this date", field="start_date")
 
 
-def _snapshot_source(session: Session, start_date: dt.date) -> list[tuple[int, int]]:
-    """B3: (budget_id, percent_bp) rows for a new period starting on `start_date`."""
+def _snapshot_source(session: Session, start_date: dt.date) -> list[tuple[int, int, str]]:
+    """B3 / BD2: (budget_id, percent_bp, direction) rows for a new period on `start_date`."""
     previous = session.scalars(
         select(Period).where(Period.start_date < start_date).order_by(Period.start_date.desc())
     ).first()
@@ -139,9 +139,9 @@ def _snapshot_source(session: Session, start_date: dt.date) -> list[tuple[int, i
     # period: copy the earliest period's snapshot. Otherwise: current defaults.
     source = previous if previous is not None and following is not None else following
     if source is not None:
-        return [(pb.budget_id, pb.percent_bp) for pb in source.budgets]
+        return [(pb.budget_id, pb.percent_bp, pb.direction) for pb in source.budgets]
     return [
-        (b.id, b.percent_bp)
+        (b.id, b.percent_bp, b.direction)
         for b in session.scalars(select(Budget).where(Budget.archived.is_(False)))
     ]
 
@@ -164,8 +164,8 @@ def create(
         created_by_name=actor.name,
     )
     period.budgets = [
-        PeriodBudget(budget_id=budget_id, percent_bp=bp)
-        for budget_id, bp in _snapshot_source(session, start)
+        PeriodBudget(budget_id=budget_id, percent_bp=bp, direction=direction)
+        for budget_id, bp, direction in _snapshot_source(session, start)
     ]
     session.add(period)
     session.flush()
@@ -242,7 +242,13 @@ def serialize_all(session: Session, today: dt.date) -> list[dict[str, Any]]:
 def serialize_detail(session: Session, period: Period, today: dt.date) -> dict[str, Any]:
     data = serialize(period, bounds(session, period), today)
     rows = session.execute(
-        select(PeriodBudget.budget_id, PeriodBudget.percent_bp, Budget.name, Budget.archived)
+        select(
+            PeriodBudget.budget_id,
+            PeriodBudget.percent_bp,
+            PeriodBudget.direction,
+            Budget.name,
+            Budget.archived,
+        )
         .join(Budget, Budget.id == PeriodBudget.budget_id)
         .where(PeriodBudget.period_id == period.id)
         .order_by(Budget.sort_order, Budget.name)
@@ -253,6 +259,7 @@ def serialize_detail(session: Session, period: Period, today: dt.date) -> dict[s
             "name": r.name,
             "archived": r.archived,
             "percent": format_percent(r.percent_bp),
+            "direction": r.direction,  # BD2: snapshot
         }
         for r in rows
     ]

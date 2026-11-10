@@ -6,7 +6,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.errors import Conflict
-from app.models import Settings
+from app.models import NEGATIVE, Settings
 from app.services import budgets, categories, periods, settings
 from app.users import Actor
 
@@ -30,6 +30,7 @@ def run(
             session,
             name=spec["name"],
             percent=spec["percent"],
+            direction=spec.get("direction") or NEGATIVE,
             sort_order=spec.get("sort_order") or 0,
             today=today,
         )

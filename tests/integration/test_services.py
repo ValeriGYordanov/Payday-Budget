@@ -205,6 +205,15 @@ async def test_get_summary_money_as_decimal_strings(
     assert response["period"]["name"] == "November 2026"
 
 
+async def test_BD3_get_summary_rows_carry_direction_and_status(
+    hass: HomeAssistant, loaded: MockConfigEntry
+) -> None:
+    response = await _call(hass, "get_summary", {}, return_response=True)
+    needs, fun = response["budgets"]
+    assert (needs["direction"], needs["status"], needs["on_track"]) == ("negative", "ok", True)
+    assert (fun["status"], fun["on_track"], fun["over_target"]) == ("over", False, True)
+
+
 async def test_get_summary_previous_period(
     hass: HomeAssistant, loaded: MockConfigEntry, addon: FakeAddon
 ) -> None:

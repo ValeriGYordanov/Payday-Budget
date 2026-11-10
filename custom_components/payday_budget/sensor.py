@@ -229,7 +229,7 @@ class BudgetsSensor(PaydayBudgetEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        fields = ("id", "name", "percent", "archived", "sort_order")
+        fields = ("id", "name", "percent", "direction", "archived", "sort_order")
         return {"budgets": [{f: b[f] for f in fields} for b in self.coordinator.data.budgets]}
 
 
@@ -244,6 +244,14 @@ class BudgetAmountSensor(BudgetEntity, MoneySensor):
     def native_value(self) -> Decimal | None:
         row = self.row
         return self.money(row[self._field]) if row else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """v1.2 §3.4: the target carries the budget's direction."""
+        row = self.row
+        if self._field != "target_minor" or row is None:
+            return None
+        return {"direction": row["direction"]}
 
 
 class BudgetUsedSensor(BudgetEntity, SensorEntity):

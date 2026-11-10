@@ -240,6 +240,9 @@ def summary_response(summary: dict[str, Any]) -> dict[str, Any]:
                 "remaining": money(b["remaining_minor"]),
                 "percent_used": b["percent_used"],
                 "over_target": b["over_target"],
+                "direction": b["direction"],
+                "status": b["status"],
+                "on_track": b["on_track"],
             }
             for b in summary["budgets"]
         ],

@@ -56,6 +56,9 @@ def budget_row(
         "remaining_minor": target - spent,
         "percent_used": used,
         "over_target": spent > target,
+        "direction": "negative",
+        "status": "over" if spent > target else "ok",
+        "on_track": spent <= target,
     }
 
 
@@ -117,6 +120,7 @@ class FakeAddon:
                 "id": 1,
                 "name": "Needs",
                 "percent": "50.00",
+                "direction": "negative",
                 "sort_order": 0,
                 "archived": False,
                 "created_at": "",
@@ -125,6 +129,7 @@ class FakeAddon:
                 "id": 2,
                 "name": "Fun",
                 "percent": "30.00",
+                "direction": "negative",
                 "sort_order": 1,
                 "archived": False,
                 "created_at": "",

@@ -24,6 +24,15 @@ INCOME = "income"
 EXPENSE = "expense"
 KINDS = (INCOME, EXPENSE)
 
+# v1.2 BD1: negative = spend at most the target; positive = reach at least the target.
+NEGATIVE = "negative"
+POSITIVE = "positive"
+DIRECTIONS = (NEGATIVE, POSITIVE)
+
+OPEN = "open"
+RECORDED = "recorded"
+DISMISSED = "dismissed"
+
 DESCRIPTION_MAX = 500
 NAME_MAX = 100
 
@@ -69,11 +78,15 @@ class Period(Base):
 
 class Budget(Base):
     __tablename__ = "budgets"
-    __table_args__ = (CheckConstraint("percent_bp BETWEEN 0 AND 10000", name="percent_range"),)
+    __table_args__ = (
+        CheckConstraint("percent_bp BETWEEN 0 AND 10000", name="percent_range"),
+        CheckConstraint("direction IN ('negative', 'positive')", name="direction"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(NAME_MAX), unique=True)
     percent_bp: Mapped[int] = mapped_column(Integer)
+    direction: Mapped[str] = mapped_column(String(8), default=NEGATIVE, server_default=NEGATIVE)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     archived: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -81,7 +94,10 @@ class Budget(Base):
 
 class PeriodBudget(Base):
     __tablename__ = "period_budgets"
-    __table_args__ = (CheckConstraint("percent_bp BETWEEN 0 AND 10000", name="percent_range"),)
+    __table_args__ = (
+        CheckConstraint("percent_bp BETWEEN 0 AND 10000", name="percent_range"),
+        CheckConstraint("direction IN ('negative', 'positive')", name="direction"),
+    )
 
     period_id: Mapped[int] = mapped_column(
         ForeignKey("periods.id", ondelete="CASCADE"), primary_key=True
@@ -90,6 +106,7 @@ class PeriodBudget(Base):
         ForeignKey("budgets.id", ondelete="CASCADE"), primary_key=True
     )
     percent_bp: Mapped[int] = mapped_column(Integer)
+    direction: Mapped[str] = mapped_column(String(8), default=NEGATIVE, server_default=NEGATIVE)
 
     period: Mapped[Period] = relationship(back_populates="budgets")
     budget: Mapped[Budget] = relationship()
@@ -188,3 +205,49 @@ class Transaction(Base):
     tags: Mapped[list[Tag]] = relationship(
         secondary="transaction_tags", lazy="selectin", order_by=Tag.name
     )
+
+
+class Reminder(Base):
+    """v1.2 §4: repeats like a recurring rule (R1) but never creates a transaction."""
+
+    __tablename__ = "reminders"
+    __table_args__ = (
+        CheckConstraint("kind IN ('income', 'expense')", name="kind"),
+        CheckConstraint("amount_minor IS NULL OR amount_minor > 0", name="amount_positive"),
+        CheckConstraint("frequency IN ('weekly', 'monthly', 'yearly')", name="frequency"),
+        CheckConstraint('"interval" >= 1', name="interval_positive"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(NAME_MAX))
+    kind: Mapped[str] = mapped_column(String(7))
+    amount_minor: Mapped[int | None] = mapped_column(Integer)
+    category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id"))
+    budget_id: Mapped[int | None] = mapped_column(ForeignKey("budgets.id"))
+    description: Mapped[str | None] = mapped_column(String(DESCRIPTION_MAX))
+    tag_ids: Mapped[list[int]] = mapped_column(JSON, default=list)
+    frequency: Mapped[str] = mapped_column(String(7))
+    interval: Mapped[int] = mapped_column(Integer, default=1)
+    anchor_date: Mapped[dt.date] = mapped_column(Date)
+    end_date: Mapped[dt.date | None] = mapped_column(Date)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_opened_date: Mapped[dt.date | None] = mapped_column(Date)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ReminderOccurrence(Base):
+    __tablename__ = "reminder_occurrences"
+    __table_args__ = (
+        CheckConstraint("status IN ('open', 'recorded', 'dismissed')", name="status"),
+        UniqueConstraint("reminder_id", "due_date", name="ux_reminder_occurrences_due"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    reminder_id: Mapped[int] = mapped_column(ForeignKey("reminders.id", ondelete="CASCADE"))
+    due_date: Mapped[dt.date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(9), default=OPEN)
+    transaction_id: Mapped[int | None] = mapped_column(
+        ForeignKey("transactions.id", ondelete="SET NULL")
+    )
+    notified_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    closed_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))

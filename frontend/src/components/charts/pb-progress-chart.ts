@@ -46,6 +46,15 @@ export class PbProgressChart extends LitElement {
       .fill.over {
         background: var(--pb-negative);
       }
+      .fill.below {
+        background: var(--pb-warning);
+      }
+      .fill.met {
+        background: var(--pb-positive);
+      }
+      .warning {
+        color: var(--pb-warning);
+      }
       .fill.unallocated {
         background: var(--pb-text-muted);
       }
@@ -67,21 +76,24 @@ export class PbProgressChart extends LitElement {
       ${s.budgets.map((b) => {
         // Bar width is presentation only; amounts stay integer minor units.
         const used = b.percent_used === null ? (b.spent_minor > 0 ? 100 : 0) : Number(b.percent_used);
+        // BD3: a positive budget counts up to its target; above it is good.
+        const positive = b.direction === "positive";
         const left =
           b.remaining_minor >= 0
-            ? t("chart.remaining", { amount: money(b.remaining_minor) })
-            : t("chart.over", { amount: money(-b.remaining_minor) });
+            ? t(positive ? "chart.to_go" : "chart.remaining", { amount: money(b.remaining_minor) })
+            : t(positive ? "chart.above" : "chart.over", { amount: money(-b.remaining_minor) });
+        const leftClass = b.status === "over" ? "negative" : b.status === "below" ? "warning" : b.status === "met" ? "positive" : "";
         return html`<div class="budget">
           <div class="top">
             <strong class="ellipsis">${b.name}</strong>
             <span class="amount">${money(b.spent_minor)} / ${money(b.target_minor)}</span>
           </div>
           <div class="track" role="progressbar" aria-label=${b.name} aria-valuenow=${Math.round(used)}>
-            <div class="fill ${b.over_target ? "over" : ""}" style="width:${Math.min(used, 100)}%"></div>
+            <div class="fill ${b.status === "ok" ? "" : b.status}" style="width:${Math.min(used, 100)}%"></div>
           </div>
           <div class="sub muted">
             <span>${b.percent}%${b.percent_used !== null ? ` · ${t("chart.used", { percent: b.percent_used })}` : ""}</span>
-            <span class=${b.remaining_minor < 0 ? "negative" : ""}>${left}</span>
+            <span class=${leftClass}>${left}</span>
           </div>
         </div>`;
       })}

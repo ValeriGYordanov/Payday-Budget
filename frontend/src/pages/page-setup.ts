@@ -6,18 +6,20 @@ import { UI_DELETE } from "../icons";
 import "../components/pb-icon";
 import { PageElement } from "../page";
 import { shared } from "../styles";
-import type { Currency } from "../types";
+import type { Currency, Direction } from "../types";
 import { define } from "../define";
 
 interface BudgetDraft {
   name: string;
   percent: string;
+  direction: Direction;
 }
 
+/** v1.2 P2: the suggested Savings budget is positive (reach at least). */
 const DEFAULT_BUDGETS: BudgetDraft[] = [
-  { name: "Needs", percent: "50" },
-  { name: "Wants", percent: "30" },
-  { name: "Savings", percent: "20" },
+  { name: "Needs", percent: "50", direction: "negative" },
+  { name: "Wants", percent: "30", direction: "negative" },
+  { name: "Savings", percent: "20", direction: "positive" },
 ];
 
 /** First-run wizard: currency (K1) → first period (P6) → budgets (B1). */
@@ -59,7 +61,7 @@ export class PageSetup extends PageElement {
     css`
       .budget {
         display: grid;
-        grid-template-columns: 1fr 88px 40px;
+        grid-template-columns: 1fr 72px 112px 40px;
         gap: 8px;
         align-items: center;
         margin-bottom: 8px;
@@ -95,7 +97,7 @@ export class PageSetup extends PageElement {
         first_period: { start_date: this._start, name: this._periodName.trim() || null },
         budgets: this._budgets
           .filter((b) => b.name.trim())
-          .map((b, i) => ({ name: b.name.trim(), percent: b.percent.trim(), sort_order: i })),
+          .map((b, i) => ({ name: b.name.trim(), percent: b.percent.trim(), direction: b.direction, sort_order: i })),
       });
       this.changed();
     } catch (err) {
@@ -133,6 +135,11 @@ export class PageSetup extends PageElement {
         (b, i) => html`<div class="budget">
           <input aria-label=${t("common.name")} maxlength="100" .value=${b.name} @input=${(e: Event) => this.updateBudget(i, { name: (e.target as HTMLInputElement).value })} />
           <input aria-label=${t("budgets.percent")} inputmode="decimal" .value=${b.percent} @input=${(e: Event) => this.updateBudget(i, { percent: (e.target as HTMLInputElement).value })} />
+          <select aria-label=${t("budgets.direction")} @change=${(e: Event) => this.updateBudget(i, { direction: (e.target as HTMLSelectElement).value as Direction })}>
+            ${(["negative", "positive"] as const).map(
+              (d) => html`<option value=${d} ?selected=${b.direction === d}>${t(`budgets.direction_${d}`)}</option>`,
+            )}
+          </select>
           <button class="icon" aria-label=${t("common.delete")} @click=${() => (this._budgets = this._budgets.filter((_, j) => j !== i))}>
             <pb-icon .path=${UI_DELETE}></pb-icon>
           </button>
@@ -142,11 +149,12 @@ export class PageSetup extends PageElement {
         ${total === null ? t("error.generic") : t("budgets.allocated", { percent: `${Math.trunc(total / 100)}.${String(total % 100).padStart(2, "0")}` })}
       </p>
       <div class="actions">
-        <button @click=${() => (this._budgets = [...this._budgets, { name: "", percent: "0" }])}>${t("setup.add_budget")}</button>
+        <button @click=${() => (this._budgets = [...this._budgets, { name: "", percent: "0", direction: "negative" }])}>${t("setup.add_budget")}</button>
         <span class="spacer"></span>
         <button @click=${() => (this._step = 1)}>${t("setup.back")}</button>
         <button class="primary" ?disabled=${!valid || this._busy} @click=${this.finish}>${t("setup.finish")}</button>
       </div>
+      <p class="muted">${t("budgets.direction_negative_help")}<br />${t("budgets.direction_positive_help")}</p>
       ${this._error ? html`<p class="error">${this._error}</p>` : nothing}`;
   }
 

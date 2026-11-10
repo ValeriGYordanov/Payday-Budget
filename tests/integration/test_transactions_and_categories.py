@@ -151,6 +151,7 @@ async def test_BS1_budgets_sensor(
             "id": 3,
             "name": "Old",
             "percent": "0.00",
+            "direction": "positive",
             "sort_order": 2,
             "archived": True,
             "created_at": "",
@@ -161,9 +162,30 @@ async def test_BS1_budgets_sensor(
     state = hass.states.get(BUDGETS)
     assert state.state == "2"
     assert state.attributes["budgets"] == [
-        {"id": 1, "name": "Needs", "percent": "50.00", "archived": False, "sort_order": 0},
-        {"id": 2, "name": "Fun", "percent": "30.00", "archived": False, "sort_order": 1},
-        {"id": 3, "name": "Old", "percent": "0.00", "archived": True, "sort_order": 2},
+        {
+            "id": 1,
+            "name": "Needs",
+            "percent": "50.00",
+            "direction": "negative",
+            "archived": False,
+            "sort_order": 0,
+        },
+        {
+            "id": 2,
+            "name": "Fun",
+            "percent": "30.00",
+            "direction": "negative",
+            "archived": False,
+            "sort_order": 1,
+        },
+        {
+            "id": 3,
+            "name": "Old",
+            "percent": "0.00",
+            "direction": "positive",
+            "archived": True,
+            "sort_order": 2,
+        },
     ]
     assert "budgets" in _entity(hass, BUDGETS)._unrecorded_attributes
     # No extra request: the sensor reuses the coordinator's budgets list.

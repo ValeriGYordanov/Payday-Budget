@@ -56,7 +56,8 @@
       "budgets": { "name": "Budgets" }
     },
     "binary_sensor": {
-      "budget_over_target": { "name": "{budget} over target" }
+      "budget_over_target": { "name": "{budget} over target" },
+      "budget_on_track": { "name": "{budget} on track" }
     },
     "button": {
       "start_new_period": { "name": "Start new period" }

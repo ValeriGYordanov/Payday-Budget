@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr
 from app.models import DESCRIPTION_MAX, NAME_MAX
 
 Kind = Literal["income", "expense"]
+Direction = Literal["negative", "positive"]
 # Percent as a decimal string ("50.25") or a whole number; floats are rejected.
 Percent = StrictStr | StrictInt
 Name = Annotated[str, Field(min_length=1, max_length=NAME_MAX)]
@@ -33,12 +34,14 @@ class PeriodUpdate(Body):
 class BudgetCreate(Body):
     name: Name
     percent: Percent
+    direction: Direction = "negative"
     sort_order: int = 0
 
 
 class BudgetUpdate(Body):
     name: str | None = Field(default=None, max_length=NAME_MAX)
     percent: Percent | None = None
+    direction: Direction | None = None
     sort_order: int | None = None
     archived: bool | None = None
 
@@ -101,6 +104,7 @@ class SetupPeriod(Body):
 class SetupBudget(Body):
     name: Name
     percent: Percent
+    direction: Direction = "negative"
     sort_order: int = 0
 
 

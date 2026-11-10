@@ -596,6 +596,8 @@ var Re = {
 	"chart.spent": "Spent",
 	"chart.remaining": "{amount} left",
 	"chart.over": "{amount} over",
+	"chart.to_go": "{amount} to go",
+	"chart.above": "{amount} above target",
 	"chart.used": "{percent}% used",
 	"chart.target_line": "Target pace",
 	"chart.cumulative": "Spent so far",
@@ -611,6 +613,11 @@ var Re = {
 	"periods.edit": "Edit period",
 	"periods.delete_confirm": "Delete period “{name}”? Its transactions move to the previous period.",
 	"budgets.percent": "Percent",
+	"budgets.direction": "Direction",
+	"budgets.direction_negative": "Negative",
+	"budgets.direction_positive": "Positive",
+	"budgets.direction_negative_help": "Negative — spend at most this share of income. Going over is bad.",
+	"budgets.direction_positive_help": "Positive — reach at least this share of income (e.g. savings, investing). Going over is good.",
 	"budgets.allocated": "Allocated {percent}%",
 	"budgets.unallocated": "Unallocated {percent}%",
 	"budgets.new": "New budget",
@@ -8646,6 +8653,15 @@ t("pb-progress-chart", class extends Ie {
       .fill.over {
         background: var(--pb-negative);
       }
+      .fill.below {
+        background: var(--pb-warning);
+      }
+      .fill.met {
+        background: var(--pb-positive);
+      }
+      .warning {
+        color: var(--pb-warning);
+      }
       .fill.unallocated {
         background: var(--pb-text-muted);
       }
@@ -8666,18 +8682,18 @@ t("pb-progress-chart", class extends Ie {
 		}, n = (e) => yu(e, t);
 		return k`
       ${e.budgets.map((e) => {
-			let t = e.percent_used === null ? e.spent_minor > 0 ? 100 : 0 : Number(e.percent_used), r = e.remaining_minor >= 0 ? j("chart.remaining", { amount: n(e.remaining_minor) }) : j("chart.over", { amount: n(-e.remaining_minor) });
+			let t = e.percent_used === null ? e.spent_minor > 0 ? 100 : 0 : Number(e.percent_used), r = e.direction === "positive", i = e.remaining_minor >= 0 ? j(r ? "chart.to_go" : "chart.remaining", { amount: n(e.remaining_minor) }) : j(r ? "chart.above" : "chart.over", { amount: n(-e.remaining_minor) }), a = e.status === "over" ? "negative" : e.status === "below" ? "warning" : e.status === "met" ? "positive" : "";
 			return k`<div class="budget">
           <div class="top">
             <strong class="ellipsis">${e.name}</strong>
             <span class="amount">${n(e.spent_minor)} / ${n(e.target_minor)}</span>
           </div>
           <div class="track" role="progressbar" aria-label=${e.name} aria-valuenow=${Math.round(t)}>
-            <div class="fill ${e.over_target ? "over" : ""}" style="width:${Math.min(t, 100)}%"></div>
+            <div class="fill ${e.status === "ok" ? "" : e.status}" style="width:${Math.min(t, 100)}%"></div>
           </div>
           <div class="sub muted">
             <span>${e.percent}%${e.percent_used === null ? "" : ` · ${j("chart.used", { percent: e.percent_used })}`}</span>
-            <span class=${e.remaining_minor < 0 ? "negative" : ""}>${r}</span>
+            <span class=${a}>${i}</span>
           </div>
         </div>`;
 		})}
@@ -8724,6 +8740,7 @@ var Eu = "payday_budget", Du = 500, Ou = class extends Ie {
       --pb-primary: var(--primary-color);
       --pb-positive: var(--success-color, #43a047);
       --pb-negative: var(--error-color, #db4437);
+      --pb-warning: var(--warning-color, #ffa600);
       --pb-chart-1: var(--primary-color, #03a9f4);
       --pb-chart-2: #ff9800;
       --pb-chart-3: #9c27b0;

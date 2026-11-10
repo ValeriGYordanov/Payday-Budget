@@ -101,6 +101,7 @@ async def test_budget_entities_follow_budgets(
     await _refresh(hass, loaded)
     assert registry.async_get("sensor.payday_budget_fun_target") is None
     assert registry.async_get("binary_sensor.payday_budget_fun_over_target") is None
+    assert registry.async_get("binary_sensor.payday_budget_fun_on_track") is None
     assert hass.states.get("sensor.payday_budget_fun_target") is None
     assert hass.states.get("sensor.payday_budget_gifts_target") is not None
     # Unarchive: the entities come back with the same IDs.
@@ -171,3 +172,29 @@ async def test_monetary_value_is_exact_decimal(
 async def test_unload(hass: HomeAssistant, loaded: MockConfigEntry) -> None:
     assert await hass.config_entries.async_unload(loaded.entry_id)
     assert loaded.state is ConfigEntryState.NOT_LOADED
+
+
+async def test_BD3_on_track_sensor_and_direction_attributes(
+    hass: HomeAssistant, loaded: MockConfigEntry, addon: FakeAddon
+) -> None:
+    needs = hass.states.get("binary_sensor.payday_budget_needs_on_track")
+    assert (needs.state, needs.attributes["direction"], needs.attributes["status"]) == (
+        STATE_ON,
+        "negative",
+        "ok",
+    )
+    fun = hass.states.get("binary_sensor.payday_budget_fun_on_track")
+    assert (fun.state, fun.attributes["status"]) == (STATE_OFF, "over")
+    target = hass.states.get("sensor.payday_budget_needs_target")
+    assert target.attributes["direction"] == "negative"
+    assert "direction" not in hass.states.get("sensor.payday_budget_needs_spent").attributes
+    # A positive budget below its target: not on track, while over_target stays off.
+    assert addon.summary is not None
+    addon.summary["budgets"][0].update(direction="positive", status="below", on_track=False)
+    await _refresh(hass, loaded)
+    needs = hass.states.get("binary_sensor.payday_budget_needs_on_track")
+    assert (needs.state, needs.attributes["status"]) == (STATE_OFF, "below")
+    assert hass.states.get("binary_sensor.payday_budget_needs_over_target").state == STATE_OFF
+    assert (
+        hass.states.get("sensor.payday_budget_needs_target").attributes["direction"] == "positive"
+    )

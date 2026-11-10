@@ -39,7 +39,11 @@ export class PageBudgets extends PageElement {
   private async save(e: Event) {
     e.preventDefault();
     const data = new FormData(e.target as HTMLFormElement);
-    const body = { name: String(data.get("name") ?? ""), percent: String(data.get("percent") ?? "") };
+    const body = {
+      name: String(data.get("name") ?? ""),
+      percent: String(data.get("percent") ?? ""),
+      direction: String(data.get("direction") ?? "negative"),
+    };
     const editing = this._editing;
     const ok = await this.write(() =>
       editing === "new" || editing === null
@@ -99,7 +103,7 @@ export class PageBudgets extends PageElement {
                   <strong class="ellipsis">${b.name}</strong>
                   ${b.archived ? html`<span class="badge">${t("common.archived")}</span>` : nothing}
                 </div>
-                <div class="muted">${b.percent}%</div>
+                <div class="muted">${b.percent}% · ${t(`budgets.direction_${b.direction}`)}</div>
               </div>
               <button class="icon" aria-label="Up" @click=${() => this.move(b, -1)}><pb-icon .path=${UI_UP}></pb-icon></button>
               <button class="icon" aria-label="Down" @click=${() => this.move(b, 1)}><pb-icon .path=${UI_DOWN}></pb-icon></button>
@@ -127,6 +131,15 @@ export class PageBudgets extends PageElement {
                 ${t("budgets.percent")}
                 <input name="percent" required inputmode="decimal" pattern="\\d{1,3}(\\.\\d{1,2})?" .value=${editing?.percent ?? ""} />
               </label>
+              <label class="field">
+                ${t("budgets.direction")}
+                <select name="direction">
+                  ${(["negative", "positive"] as const).map(
+                    (d) => html`<option value=${d} ?selected=${(editing?.direction ?? "negative") === d}>${t(`budgets.direction_${d}`)}</option>`,
+                  )}
+                </select>
+              </label>
+              <p class="muted">${t("budgets.direction_negative_help")}<br />${t("budgets.direction_positive_help")}</p>
               <div class="actions">
                 ${editing
                   ? html`<button type="button" class="danger" aria-label=${t("common.delete")} @click=${() => this.deleteItem(editing)}>

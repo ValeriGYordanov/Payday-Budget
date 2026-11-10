@@ -157,6 +157,7 @@ async def test_end_to_end(
     assert transaction["amount_minor"] == 2550
     await _wait_for(hass, lambda: state("sensor.payday_budget_needs_spent") == "25.50", timeout=15)
     assert state("binary_sensor.payday_budget_needs_over_target") == "off"
+    assert state("binary_sensor.payday_budget_needs_on_track") == "on"  # v1.2 BD3
 
     # Rule violations from the add-on surface with their rule ID.
     with pytest.raises(ServiceValidationError) as err:
@@ -246,6 +247,7 @@ async def test_end_to_end_transactions_and_categories(
         "id": 1,
         "name": "Needs",
         "percent": "60.00",
+        "direction": "negative",
         "archived": False,
         "sort_order": 0,
     }

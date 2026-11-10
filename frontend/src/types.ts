@@ -27,13 +27,20 @@ export interface Period {
 }
 
 export interface PeriodDetail extends Period {
-  budgets: { budget_id: number; name: string; archived: boolean; percent: string }[];
+  budgets: { budget_id: number; name: string; archived: boolean; percent: string; direction: Direction }[];
 }
+
+/** v1.2 BD1: negative = spend at most the target; positive = reach at least it. */
+export type Direction = "negative" | "positive";
+
+/** BD3 */
+export type BudgetStatus = "ok" | "over" | "below" | "met";
 
 export interface Budget {
   id: number;
   name: string;
   percent: string;
+  direction: Direction;
   sort_order: number;
   archived: boolean;
   created_at: string;
@@ -119,6 +126,9 @@ export interface BudgetRow {
   remaining_minor: number;
   percent_used: string | null;
   over_target: boolean;
+  direction: Direction;
+  status: BudgetStatus;
+  on_track: boolean;
 }
 
 export interface Summary extends Settings {
@@ -134,7 +144,14 @@ export interface HistoryItem {
   period: Period;
   income_minor: number;
   expenses_minor: number;
-  budgets: { budget_id: number; name: string; target_minor: number; spent_minor: number }[];
+  budgets: {
+    budget_id: number;
+    name: string;
+    target_minor: number;
+    spent_minor: number;
+    direction: Direction;
+    status: BudgetStatus;
+  }[];
 }
 
 export interface Breakdown {

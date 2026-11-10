@@ -17,7 +17,8 @@
       "budgets": { "default": "mdi:wallet-outline" }
     },
     "binary_sensor": {
-      "budget_over_target": { "default": "mdi:check-circle-outline", "state": { "on": "mdi:alert-circle" } }
+      "budget_over_target": { "default": "mdi:check-circle-outline", "state": { "on": "mdi:alert-circle" } },
+      "budget_on_track": { "default": "mdi:alert-outline", "state": { "on": "mdi:check-circle" } }
     },
     "button": {
       "start_new_period": { "default": "mdi:calendar-plus" }

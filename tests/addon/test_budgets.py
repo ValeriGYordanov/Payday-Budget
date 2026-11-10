@@ -239,3 +239,108 @@ def test_B7_savings_is_an_ordinary_budget(ready: Api) -> None:
     savings = ready.budget_row(summary, "Savings")
     assert (savings["target_minor"], savings["spent_minor"]) == (20000, 20000)
     assert summary["expenses_minor"] == 20000
+
+
+# --- v1.2 budget direction (SPEC-1.2 §3) -------------------------------------
+
+
+def _directions(api: Api, period_id: int) -> dict[str, str]:
+    return {b["name"]: b["direction"] for b in api.get(f"/periods/{period_id}")["budgets"]}
+
+
+def _row(api: Api, name: str, period: str | int = "current") -> dict[str, object]:
+    return next(b for b in api.summary(period)["budgets"] if b["name"] == name)
+
+
+def test_BD1_direction_defaults_to_negative_and_can_be_set(ready: Api) -> None:
+    assert {b["direction"] for b in ready.get("/budgets")["items"]} == {"negative"}
+    created = ready.post("/budgets", {"name": "Invest", "percent": "0", "direction": "positive"})
+    assert created["direction"] == "positive"
+    savings = ready.budget_id("Savings")
+    assert ready.patch(f"/budgets/{savings}", {"direction": "positive"})["direction"] == "positive"
+    ready.error("PATCH", f"/budgets/{savings}", "validation_error", json={"direction": "sideways"})
+
+
+def test_BD1_setup_accepts_direction(api: Api) -> None:
+    api.setup(
+        budgets=[
+            {"name": "Needs", "percent": "80"},
+            {"name": "Savings", "percent": "20", "direction": "positive"},
+        ]
+    )
+    assert {b["name"]: b["direction"] for b in api.get("/budgets")["items"]} == {
+        "Needs": "negative",
+        "Savings": "positive",
+    }
+    assert _directions(api, api.period_id("2026-10-25"))["Savings"] == "positive"
+
+
+def test_BD2_direction_edit_changes_current_and_future_not_past(ready: Api) -> None:
+    ready.clock.today = dt.date(2026, 11, 25)
+    current = ready.new_period()
+    past = ready.period_id("2026-10-25")
+    ready.patch(f"/budgets/{ready.budget_id('Savings')}", {"direction": "positive"})
+    assert _directions(ready, current["id"])["Savings"] == "positive"
+    assert _directions(ready, past)["Savings"] == "negative"
+    ready.clock.today = dt.date(2026, 12, 25)
+    future = ready.new_period()
+    assert _directions(ready, future["id"])["Savings"] == "positive"
+
+
+def test_BD2_backdated_period_copies_the_split_periods_direction(ready: Api) -> None:
+    ready.clock.today = dt.date(2026, 12, 1)
+    ready.new_period("2026-11-25")
+    ready.patch(f"/budgets/{ready.budget_id('Savings')}", {"direction": "positive"})  # current only
+    inserted = ready.new_period("2026-11-10")
+    assert _directions(ready, inserted["id"])["Savings"] == "negative"
+
+
+def test_BD3_status_for_negative_budgets(ready: Api) -> None:
+    ready.income(100000, "2026-10-25")  # Needs target 500.00
+    ready.expense(50000, "2026-10-26", budget="Needs")
+    row = _row(ready, "Needs")
+    assert (row["direction"], row["status"], row["on_track"]) == ("negative", "ok", True)
+    ready.expense(1, "2026-10-26", budget="Needs")
+    row = _row(ready, "Needs")
+    assert (row["status"], row["on_track"]) == ("over", False)
+
+
+def test_BD3_status_for_positive_budgets(ready: Api) -> None:
+    ready.patch(f"/budgets/{ready.budget_id('Savings')}", {"direction": "positive"})
+    ready.income(100000, "2026-10-25")  # Savings target 200.00
+    ready.expense(19999, "2026-10-26", budget="Savings")
+    row = _row(ready, "Savings")
+    assert (row["direction"], row["status"], row["on_track"]) == ("positive", "below", False)
+    ready.expense(1, "2026-10-26", budget="Savings")
+    assert (_row(ready, "Savings")["status"], _row(ready, "Savings")["on_track"]) == ("met", True)
+    ready.expense(50000, "2026-10-26", budget="Savings")  # more is better
+    assert _row(ready, "Savings")["status"] == "met"
+
+
+def test_BD3_zero_target(ready: Api) -> None:
+    ready.patch(f"/budgets/{ready.budget_id('Savings')}", {"direction": "positive"})
+    assert _row(ready, "Savings")["status"] == "met"  # no income: 0 >= 0
+    assert _row(ready, "Needs")["status"] == "ok"
+
+
+def test_BD3_history_rows_carry_direction_and_status(ready: Api) -> None:
+    ready.patch(f"/budgets/{ready.budget_id('Savings')}", {"direction": "positive"})
+    ready.income(100000, "2026-10-25")
+    budgets = ready.get("/periods/history?limit=1")["items"][0]["budgets"]
+    savings = next(b for b in budgets if b["name"] == "Savings")
+    assert (savings["direction"], savings["status"]) == ("positive", "below")
+
+
+def test_BD4_sum_rule_applies_to_both_directions(ready: Api) -> None:
+    ready.patch(f"/budgets/{ready.budget_id('Savings')}", {"direction": "positive"})
+    ready.error(
+        "POST", "/budgets", "B1", json={"name": "Invest", "percent": "1", "direction": "positive"}
+    )
+
+
+def test_BD5_over_target_keeps_its_meaning_for_positive_budgets(ready: Api) -> None:
+    ready.patch(f"/budgets/{ready.budget_id('Savings')}", {"direction": "positive"})
+    ready.income(100000, "2026-10-25")
+    ready.expense(30000, "2026-10-26", budget="Savings")  # target 200.00
+    row = _row(ready, "Savings")
+    assert (row["over_target"], row["status"], row["on_track"]) == (True, "met", True)

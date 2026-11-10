@@ -7,7 +7,7 @@ from sqlalchemy import delete, exists, func, select
 from sqlalchemy.orm import Session
 
 from app.errors import Conflict, InvalidInput, NotFound, RuleViolation
-from app.models import EXPENSE, Budget, PeriodBudget, RecurringRule, Transaction, iso_utc
+from app.models import EXPENSE, NEGATIVE, Budget, PeriodBudget, RecurringRule, Transaction, iso_utc
 from app.money import FULL_PERCENT_BP, format_percent, parse_percent
 from app.services import periods
 
@@ -56,17 +56,23 @@ def _clean_name(session: Session, name: str, exclude_id: int | None = None) -> s
 
 
 def _set_current_snapshot(session: Session, budget: Budget, today: dt.date) -> None:
-    """B3: the current period's snapshot follows the budget's default."""
+    """B3 / BD2: the current period's snapshot follows the budget's default."""
     period = periods.current(session, today)
     if period is None:
         return
     row = session.get(PeriodBudget, (period.id, budget.id))
     if row is None:
         session.add(
-            PeriodBudget(period_id=period.id, budget_id=budget.id, percent_bp=budget.percent_bp)
+            PeriodBudget(
+                period_id=period.id,
+                budget_id=budget.id,
+                percent_bp=budget.percent_bp,
+                direction=budget.direction,
+            )
         )
     else:
         row.percent_bp = budget.percent_bp
+        row.direction = budget.direction
 
 
 def _drop_from_current_snapshot(session: Session, budget: Budget, today: dt.date) -> None:
@@ -91,11 +97,19 @@ def _drop_from_current_snapshot(session: Session, budget: Budget, today: dt.date
 
 
 def create(
-    session: Session, *, name: str, percent: str | int, sort_order: int, today: dt.date
+    session: Session,
+    *,
+    name: str,
+    percent: str | int,
+    sort_order: int,
+    today: dt.date,
+    direction: str = NEGATIVE,
 ) -> Budget:
     bp = _percent_bp(percent)
     _check_sum(session, bp)
-    budget = Budget(name=_clean_name(session, name), percent_bp=bp, sort_order=sort_order)
+    budget = Budget(
+        name=_clean_name(session, name), percent_bp=bp, direction=direction, sort_order=sort_order
+    )
     session.add(budget)
     session.flush()
     _set_current_snapshot(session, budget, today)
@@ -110,6 +124,11 @@ def update(session: Session, budget: Budget, *, fields: dict[str, Any], today: d
         budget.name = _clean_name(session, fields["name"], exclude_id=budget.id)
     if fields.get("sort_order") is not None:
         budget.sort_order = fields["sort_order"]
+    direction_changed = (
+        fields.get("direction") is not None and fields["direction"] != budget.direction
+    )
+    if direction_changed:
+        budget.direction = fields["direction"]
 
     new_bp = budget.percent_bp
     if fields.get("percent") is not None:
@@ -125,7 +144,7 @@ def update(session: Session, budget: Budget, *, fields: dict[str, Any], today: d
 
     if archived and not was_archived:
         _drop_from_current_snapshot(session, budget, today)
-    elif not archived and ("percent" in fields or was_archived):
+    elif not archived and ("percent" in fields or direction_changed or was_archived):
         _set_current_snapshot(session, budget, today)
     session.flush()
     return budget
@@ -147,6 +166,7 @@ def serialize(budget: Budget) -> dict[str, Any]:
         "id": budget.id,
         "name": budget.name,
         "percent": format_percent(budget.percent_bp),
+        "direction": budget.direction,
         "sort_order": budget.sort_order,
         "archived": budget.archived,
         "created_at": iso_utc(budget.created_at),

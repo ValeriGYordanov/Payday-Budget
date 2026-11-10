@@ -7,7 +7,16 @@ from typing import Any
 from sqlalchemy import ColumnElement, Date, and_, func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models import EXPENSE, INCOME, Budget, Category, Period, PeriodBudget, Transaction
+from app.models import (
+    EXPENSE,
+    INCOME,
+    POSITIVE,
+    Budget,
+    Category,
+    Period,
+    PeriodBudget,
+    Transaction,
+)
 from app.money import FULL_PERCENT_BP, format_percent, percent_used, round_half_up_div, target_minor
 from app.services import periods, settings
 
@@ -22,6 +31,13 @@ def _in_range(b: periods.Bounds) -> ColumnElement[bool]:
     return condition
 
 
+def budget_status(direction: str, spent: int, target: int) -> str:
+    """BD3: negative budgets are `ok` / `over`; positive ones `below` / `met`."""
+    if direction == POSITIVE:
+        return "met" if spent >= target else "below"
+    return "over" if spent > target else "ok"
+
+
 def _budget_rows(
     session: Session,
     period_ids: list[int],
@@ -30,11 +46,14 @@ def _budget_rows(
 ) -> dict[int, list[dict[str, Any]]]:
     """Per period: snapshot budgets (B3) plus budgets with expenses but no snapshot row."""
     snapshot = {
-        (r.period_id, r.budget_id): r.percent_bp
+        (r.period_id, r.budget_id): (r.percent_bp, r.direction)
         for r in session.execute(
-            select(PeriodBudget.period_id, PeriodBudget.budget_id, PeriodBudget.percent_bp).where(
-                PeriodBudget.period_id.in_(period_ids)
-            )
+            select(
+                PeriodBudget.period_id,
+                PeriodBudget.budget_id,
+                PeriodBudget.percent_bp,
+                PeriodBudget.direction,
+            ).where(PeriodBudget.period_id.in_(period_ids))
         )
     }
     keys = set(snapshot) | set(spent)
@@ -43,9 +62,11 @@ def _budget_rows(
     result: dict[int, list[dict[str, Any]]] = {pid: [] for pid in period_ids}
     for period_id, budget_id in keys:
         budget = by_id[budget_id]
-        bp = snapshot.get((period_id, budget_id), 0)
+        # No snapshot row (expenses on a budget outside the snapshot): 0 %, current direction.
+        bp, direction = snapshot.get((period_id, budget_id), (0, budget.direction))
         target = target_minor(income.get(period_id, 0), bp)  # B2
         used = spent.get((period_id, budget_id), 0)
+        status = budget_status(direction, used, target)
         result[period_id].append(
             {
                 "budget_id": budget_id,
@@ -58,7 +79,10 @@ def _budget_rows(
                 "spent_minor": used,
                 "remaining_minor": target - used,  # B5
                 "percent_used": percent_used(used, target),  # B5
-                "over_target": used > target,
+                "over_target": used > target,  # BD5: unchanged for every direction
+                "direction": direction,
+                "status": status,
+                "on_track": status in ("ok", "met"),
             }
         )
     for rows in result.values():
@@ -167,6 +191,8 @@ def history(session: Session, limit: int, today: dt.date) -> dict[str, Any]:
                         "name": row["name"],
                         "target_minor": row["target_minor"],
                         "spent_minor": row["spent_minor"],
+                        "direction": row["direction"],
+                        "status": row["status"],
                     }
                     for row in budget_rows[r.id]
                 ],
