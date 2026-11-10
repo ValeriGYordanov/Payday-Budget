@@ -218,26 +218,27 @@ def delete_budget(budget_id: int, session: SessionDep) -> Response:
 def list_categories(
     session: SessionDep, kind: Kind | None = None, archived: bool | None = None
 ) -> dict[str, Any]:
-    return {"items": [categories.serialize(c) for c in categories.listing(session, kind, archived)]}
+    items = categories.listing(session, kind, archived)
+    return {"items": [categories.serialize(c, count) for c, count in items]}
 
 
 @router.post("/categories", status_code=201)
 def create_category(body: CategoryCreate, session: SessionDep) -> dict[str, Any]:
     category = categories.create(session, name=body.name, kind=body.kind, icon=body.icon)
     session.commit()
-    return categories.serialize(category)
+    return categories.serialize_one(session, category)
 
 
 @router.get("/categories/{category_id}")
 def get_category(category_id: int, session: SessionDep) -> dict[str, Any]:
-    return categories.serialize(categories.get(session, category_id))
+    return categories.serialize_one(session, categories.get(session, category_id))
 
 
 @router.patch("/categories/{category_id}")
 def update_category(category_id: int, body: CategoryUpdate, session: SessionDep) -> dict[str, Any]:
     category = categories.update(session, categories.get(session, category_id), fields=body.given())
     session.commit()
-    return categories.serialize(category)
+    return categories.serialize_one(session, category)
 
 
 @router.delete("/categories/{category_id}", status_code=204)

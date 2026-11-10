@@ -3,7 +3,7 @@
 import re
 from typing import Any
 
-from sqlalchemy import exists, select
+from sqlalchemy import exists, func, select
 from sqlalchemy.orm import Session
 
 from app.errors import Conflict, InvalidInput, NotFound, RuleViolation
@@ -66,13 +66,26 @@ def seed(session: Session) -> None:
     session.flush()
 
 
-def listing(session: Session, kind: str | None, archived: bool | None) -> list[Category]:
-    query = select(Category).order_by(Category.kind, Category.name)
+def listing(
+    session: Session, kind: str | None, archived: bool | None
+) -> list[tuple[Category, int]]:
+    """Categories with their transaction counts (A1: one grouped query, not per row)."""
+    query = (
+        select(Category, func.count(Transaction.id))
+        .outerjoin(Transaction, Transaction.category_id == Category.id)
+        .group_by(Category.id)
+        .order_by(Category.kind, Category.name)
+    )
     if kind is not None:
         query = query.where(Category.kind == kind)
     if archived is not None:
         query = query.where(Category.archived.is_(archived))
-    return list(session.scalars(query))
+    return [(category, count) for category, count in session.execute(query)]
+
+
+def transaction_count(session: Session, category: Category) -> int:
+    query = select(func.count(Transaction.id)).where(Transaction.category_id == category.id)
+    return session.scalar(query) or 0
 
 
 def create(session: Session, *, name: str, kind: str, icon: str) -> Category:
@@ -117,11 +130,16 @@ def remove(session: Session, category: Category) -> None:
     session.flush()
 
 
-def serialize(category: Category) -> dict[str, Any]:
+def serialize(category: Category, transaction_count: int) -> dict[str, Any]:
     return {
         "id": category.id,
         "name": category.name,
         "kind": category.kind,
         "icon": category.icon,
         "archived": category.archived,
+        "transaction_count": transaction_count,
     }
+
+
+def serialize_one(session: Session, category: Category) -> dict[str, Any]:
+    return serialize(category, transaction_count(session, category))

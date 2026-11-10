@@ -51,6 +51,7 @@ export interface Category {
   kind: Kind;
   icon: string;
   archived: boolean;
+  transaction_count: number;
 }
 
 export interface Tag {

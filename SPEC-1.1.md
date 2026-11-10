@@ -1,6 +1,6 @@
 # Payday Budget — Specification v1.1
 
-> Status: approved, 2026-11-02. All decisions in §9 confirmed. Extends `SPEC.md` (v1); everything there
+> Status: approved, 2026-11-02 (D7–D11 added 2026-11-10). All decisions in §9 confirmed. Extends `SPEC.md` (v1); everything there
 > still applies unless changed here. Target version: **1.1.0** for the app and the
 > integration (released together; the version test keeps them in sync).
 
@@ -208,8 +208,8 @@ the new one is verified.
 
 - Performance targets from `SPEC.md` §9 still hold: with 20 000 transactions,
   `/categories` with counts and `/transactions?limit=100` stay under 200 ms p95 on HA Green.
-- The coordinator adds two requests per refresh (recent transactions, categories); the
-  budgets sensor reuses the budgets request it already makes.
+- The coordinator adds three requests per refresh (newest N transactions, current period
+  count, categories; §9 D7); the budgets sensor reuses the budgets request it already makes.
 - New sensors' list attributes are unrecorded (no database growth in HA).
 - Strings for the new actions and sensors in `strings.json` / `translations/en.json`.
 - CI as in v1 (ruff, mypy, eslint, tsc, tests, image build, hassfest, HACS).
@@ -236,3 +236,8 @@ Same process as v1: one milestone at a time, tests and linters passing, review s
 | D4 | Should `list_transactions` also be available as a WebSocket command for custom cards? | No |
 | D5 | Default `limit` for `list_transactions` | 100 (the old view showed the first 100) |
 | D6 | Version number | 1.1.0 (new features, nothing removed) |
+| D7 | §7 said two requests per refresh, but §4.1 needs the newest N and the current period's count | Three requests: `/transactions?limit=N`, `/transactions?period=current&limit=1` (its `total`), `/categories`; no app change |
+| D8 | `update_category`: does `kind` disambiguate the name or change the kind? | Given by id: `kind` changes the kind. Given by name: if the name exists in that kind, it selects that category (no change); if the name exists only in the other kind, the kind changes |
+| D9 | Names are unique per kind case-sensitively (`Food` and `food` can coexist), but resolve case-insensitively | More than one match within a kind → error, in every action (including the v1 transaction actions); nothing is called |
+| D10 | Categories sensor order | The app's order (kind, then name as the app sorts it) |
+| D11 | Does `transaction_count` appear in `POST`/`PATCH /categories` responses too? | Yes: every category response has the same shape |

@@ -1,4 +1,8 @@
-"""§5.3 Categories."""
+"""§5.3 Categories, and v1.1 A1/A2 (transaction counts)."""
+
+from typing import Any
+
+from sqlalchemy import event
 
 from app.services.categories import SEED
 from tests.addon.conftest import Api
@@ -88,3 +92,59 @@ def test_C3_category_list_filters(ready: Api) -> None:
     archived = ready.get("/categories?archived=true")["items"]
     assert [c["name"] for c in archived] == ["Food"]
     assert all(c["kind"] == "income" for c in ready.get("/categories?kind=income")["items"])
+
+
+def test_A1_category_list_carries_transaction_count_across_periods(ready: Api) -> None:
+    ready.expense(100, "2026-10-26", category="Food")
+    ready.income(5000, "2026-10-27")
+    ready.new_period("2026-10-30")
+    ready.expense(200, "2026-10-31", category="Food")
+    ready.expense(300, "2026-10-31", category="Health")
+    health = ready.category_id("Health")
+    ready.patch(f"/categories/{health}", {"archived": True})
+
+    counts = {
+        (c["name"], c["kind"]): c["transaction_count"] for c in ready.get("/categories")["items"]
+    }
+    assert counts[("Food", "expense")] == 2  # any period
+    assert counts[("Health", "expense")] == 1  # archived categories keep their count
+    assert counts[("Salary", "income")] == 1
+    assert counts[("Housing", "expense")] == 0
+    income = ready.get("/categories?kind=income")["items"]
+    assert [(c["name"], c["transaction_count"]) for c in income] == [
+        ("Other income", 0),
+        ("Salary", 1),
+    ]
+    archived = ready.get("/categories?archived=true")["items"]
+    assert [(c["name"], c["transaction_count"]) for c in archived] == [("Health", 1)]
+
+
+def test_A1_transaction_counts_come_from_one_query(ready: Api) -> None:
+    for category in ("Food", "Health", "Transport"):
+        ready.expense(100, "2026-10-26", category=category)
+    app: Any = ready.client.app
+    statements: list[str] = []
+
+    def record(_conn: Any, _cursor: Any, statement: str, *_args: Any) -> None:
+        statements.append(statement)
+
+    event.listen(app.state.engine, "before_cursor_execute", record)
+    try:
+        items = ready.get("/categories")["items"]
+    finally:
+        event.remove(app.state.engine, "before_cursor_execute", record)
+    assert len(items) == len(SEED)
+    assert len([s for s in statements if "transactions" in s]) == 1
+
+
+def test_A2_single_category_carries_transaction_count(ready: Api) -> None:
+    tx = ready.expense(100, "2026-10-26", category="Food")
+    ready.expense(100, "2026-10-27", category="Food")
+    food = ready.category_id("Food")
+    assert ready.get(f"/categories/{food}")["transaction_count"] == 2
+    ready.delete(f"/transactions/{tx['id']}")
+    assert ready.get(f"/categories/{food}")["transaction_count"] == 1
+    # D11: every category response has the same shape.
+    assert ready.patch(f"/categories/{food}", {"icon": "mdi:food-apple"})["transaction_count"] == 1
+    created = ready.post("/categories", {"name": "Pets", "kind": "expense"})
+    assert created["transaction_count"] == 0
