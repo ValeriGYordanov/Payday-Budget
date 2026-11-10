@@ -5,7 +5,7 @@ import { kindLabel, t } from "../i18n";
 import { amountInputValue, parseAmount } from "../money";
 import { errorMessage } from "../page";
 import { shared } from "../styles";
-import type { Budget, BudgetList, Category, Kind, Settings, Tag, Transaction } from "../types";
+import type { Budget, BudgetList, Category, Kind, ReminderOccurrence, Settings, Tag, Transaction } from "../types";
 import { confirmAction } from "./pb-dialog";
 import "./pb-dialog";
 import { define } from "../define";
@@ -32,6 +32,7 @@ export class PbTransactionDialog extends LitElement {
     settings: { attribute: false },
     _open: { state: true },
     _editing: { state: true },
+    _occurrence: { state: true },
     _form: { state: true },
     _categories: { state: true },
     _budgets: { state: true },
@@ -43,6 +44,8 @@ export class PbTransactionDialog extends LitElement {
   declare settings: Settings;
   declare _open: boolean;
   declare _editing: Transaction | null;
+  /** v1.2 §4.3: recording a due reminder (pre-filled; Save records, Ignore dismisses). */
+  declare _occurrence: ReminderOccurrence | null;
   declare _form: FormState;
   declare _categories: Category[];
   declare _budgets: Budget[];
@@ -55,6 +58,7 @@ export class PbTransactionDialog extends LitElement {
     super();
     this._open = false;
     this._editing = null;
+    this._occurrence = null;
     this._form = this.emptyForm();
     this._categories = [];
     this._budgets = [];
@@ -95,6 +99,7 @@ export class PbTransactionDialog extends LitElement {
   /** Open for a new transaction, or to edit `transaction`. */
   async show(transaction: Transaction | null = null) {
     this._editing = transaction;
+    this._occurrence = null;
     this._error = "";
     this._errorField = "";
     this._form = transaction
@@ -109,6 +114,30 @@ export class PbTransactionDialog extends LitElement {
         }
       : this.emptyForm();
     this._open = true;
+    await this.loadOptions();
+  }
+
+  /** Open pre-filled from a due reminder; the budget comes from the reminder, if it has one. */
+  async showReminder(occurrence: ReminderOccurrence) {
+    const p = occurrence.prefill;
+    this._editing = null;
+    this._occurrence = occurrence;
+    this._error = "";
+    this._errorField = "";
+    this._form = {
+      kind: p.kind,
+      amount: p.amount_minor === null ? "" : amountInputValue(p.amount_minor, this.settings.minor_unit),
+      categoryId: p.category_id === null ? "" : String(p.category_id),
+      budgetId: p.budget_id === null ? "" : String(p.budget_id),
+      date: p.date,
+      description: p.description ?? "",
+      tags: p.tags.join(", "),
+    };
+    this._open = true;
+    await this.loadOptions();
+  }
+
+  private async loadOptions() {
     try {
       const [categories, budgets, tags] = await Promise.all([
         api.get<{ items: Category[] }>("categories"),
@@ -177,6 +206,7 @@ export class PbTransactionDialog extends LitElement {
     this._busy = true;
     try {
       if (this._editing) await api.patch(`transactions/${this._editing.id}`, body);
+      else if (this._occurrence) await api.post(`reminders/occurrences/${this._occurrence.id}/record`, body);
       else await api.post("transactions", body);
       this.finish();
     } catch (err) {
@@ -197,6 +227,16 @@ export class PbTransactionDialog extends LitElement {
     }
   }
 
+  private async ignoreReminder() {
+    if (!this._occurrence) return;
+    try {
+      await api.post(`reminders/occurrences/${this._occurrence.id}/dismiss`, {});
+      this.finish();
+    } catch (err) {
+      this._error = errorMessage(err);
+    }
+  }
+
   private finish() {
     this._open = false;
     this.dispatchEvent(new CustomEvent("pb-changed", { bubbles: true, composed: true }));
@@ -211,7 +251,7 @@ export class PbTransactionDialog extends LitElement {
     const decimals = this.settings?.minor_unit ?? 2;
     return html`
       <pb-dialog
-        .heading=${this._editing ? t("tx.edit") : t("tx.add")}
+        .heading=${this._editing ? t("tx.edit") : this._occurrence ? this._occurrence.name : t("tx.add")}
         .open=${this._open}
         @closed=${() => (this._open = false)}
       >
@@ -318,6 +358,10 @@ export class PbTransactionDialog extends LitElement {
               ? html`<button type="button" class="danger" @click=${this.deleteItem}>
                     ${t("common.delete")}
                   </button>
+                  <span class="spacer"></span>`
+              : nothing}
+            ${this._occurrence
+              ? html`<button type="button" @click=${this.ignoreReminder}>${t("reminders.ignore")}</button>
                   <span class="spacer"></span>`
               : nothing}
             <button type="button" @click=${() => (this._open = false)}>${t("common.cancel")}</button>

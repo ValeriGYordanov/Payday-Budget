@@ -13,8 +13,9 @@ import "../pages/page-setup";
 import "../pages/page-tags";
 import "../pages/page-transactions";
 import { shared } from "../styles";
-import type { Settings, Transaction } from "../types";
+import type { ReminderOccurrence, Settings, Transaction } from "../types";
 import "./pb-icon";
+import "./pb-reminders";
 import type { PbTransactionDialog } from "./pb-transaction-dialog";
 import "./pb-transaction-dialog";
 import { define } from "../define";
@@ -44,12 +45,14 @@ export class PbApp extends LitElement {
     _revision: { state: true },
     _menuOpen: { state: true },
     _message: { state: true },
+    _reminders: { state: true },
   };
   declare _settings: Settings | null;
   declare _page: PageName;
   declare _revision: number;
   declare _menuOpen: boolean;
   declare _message: string;
+  declare _reminders: ReminderOccurrence[];
 
   private unsubscribe?: () => void;
   private refreshTimer?: number;
@@ -65,6 +68,7 @@ export class PbApp extends LitElement {
     this._revision = 0;
     this._menuOpen = false;
     this._message = "";
+    this._reminders = [];
   }
 
   static override styles = [
@@ -178,6 +182,9 @@ export class PbApp extends LitElement {
       .message button.icon {
         color: inherit;
       }
+      .reminders {
+        border-left: 4px solid var(--pb-warning, var(--pb-primary));
+      }
     `,
   ];
 
@@ -185,6 +192,7 @@ export class PbApp extends LitElement {
     super.connectedCallback();
     window.addEventListener("hashchange", this.onHash);
     void this.loadSettings();
+    void this.loadReminders();
     this.unsubscribe = onChanged(() => this.refresh());
   }
 
@@ -202,12 +210,27 @@ export class PbApp extends LitElement {
     }
   }
 
+  /** Open reminder occurrences for the banner (v1.2 §4.3). */
+  private async loadReminders() {
+    try {
+      this._reminders = (await api.get<{ items: ReminderOccurrence[] }>("reminders/occurrences?status=open")).items;
+    } catch {
+      this._reminders = []; // the banner is optional; pages report their own errors
+    }
+  }
+
+  private recordReminder(occurrence: ReminderOccurrence) {
+    const dialog = this.renderRoot.querySelector<PbTransactionDialog>("pb-transaction-dialog");
+    void dialog?.showReminder(occurrence);
+  }
+
   /** Data changed (SSE or own write): bump the revision so pages reload (debounced). */
   private refresh() {
     window.clearTimeout(this.refreshTimer);
     this.refreshTimer = window.setTimeout(() => {
       this._revision += 1;
       void this.loadSettings();
+      void this.loadReminders();
     }, 150);
   }
 
@@ -288,7 +311,13 @@ export class PbApp extends LitElement {
       <main
         @pb-error=${(e: CustomEvent<string>) => this.showMessage(e.detail)}
         @pb-changed=${() => this.refresh()}
+        @pb-record-reminder=${(e: CustomEvent<ReminderOccurrence>) => this.recordReminder(e.detail)}
       >
+        ${this._reminders.length && this._page !== "recurring"
+          ? html`<div class="card reminders">
+              <pb-reminders .settings=${settings} .items=${this._reminders} .max=${3}></pb-reminders>
+            </div>`
+          : nothing}
         ${this.renderPage(settings)}
       </main>
       <button class="fab" aria-label=${t("tx.add")} title=${t("tx.add")} @click=${() => this.addTransaction()}>

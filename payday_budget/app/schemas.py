@@ -91,6 +91,23 @@ class RecurringBody(Body):
     active: bool | None = None
 
 
+class ReminderBody(Body):
+    """v1.2 §4: used for create and update; required fields are checked by the service."""
+
+    name: str | None = Field(default=None, max_length=NAME_MAX)
+    kind: Kind | None = None
+    amount_minor: StrictInt | None = None
+    category_id: int | None = None
+    budget_id: int | None = None
+    description: str | None = Field(default=None, max_length=DESCRIPTION_MAX)
+    tags: list[str] | None = None
+    frequency: str | None = None
+    interval: StrictInt | None = None
+    anchor_date: dt.date | None = None
+    end_date: dt.date | None = None
+    active: bool | None = None
+
+
 class SettingsUpdate(Body):
     currency: str
     confirm: bool = False

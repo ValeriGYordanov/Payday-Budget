@@ -1,4 +1,6 @@
-"""Recurring scheduler (R2): on add-on start, then daily at 00:05 local time.
+"""Scheduler (R2, RM2): on add-on start, then daily at 00:05 local time.
+
+Generates recurring transactions and opens due reminder occurrences.
 
 An asyncio task; the DB work runs in a worker thread.
 """
@@ -10,7 +12,7 @@ from collections.abc import Awaitable, Callable
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.services import recurring
+from app.services import recurring, reminders
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,11 +38,15 @@ def seconds_until(target: dt.datetime, now: dt.datetime) -> float:
 
 
 def run_once(factory: sessionmaker[Session], today: Callable[[], dt.date]) -> int:
-    """Generate all due occurrences in one transaction."""
+    """Generate all due recurring transactions and open due reminders, in one transaction.
+
+    Returns the number of transactions created."""
     with factory() as session:
-        created = recurring.generate_all(session, today())
+        day = today()
+        created = recurring.generate_all(session, day)
+        opened = reminders.open_all(session, day)
         session.commit()
-    _LOGGER.info("Recurring scheduler created %d transaction(s)", created)
+    _LOGGER.info("Scheduler created %d transaction(s) and opened %d reminder(s)", created, opened)
     return created
 
 

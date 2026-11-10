@@ -94,8 +94,10 @@ data) or ignores it.
 
 - **RM1** Due dates follow R1 (frequency, interval, anchor, month-end clamping).
 - **RM2** The scheduler (R2: on start and daily at 00:05) opens an occurrence for every due date
-  from `last_opened_date + 1` (or `anchor_date`) up to and including today; missed days are
-  caught up. Idempotent via UNIQUE (`reminder_id`, `due_date`). Never for future dates.
+  from `last_opened_date + 1` up to and including today; missed days are caught up. A **new**
+  reminder opens only its latest due date on or before today (D11). Due dates before the first
+  period are skipped, as in R5 (D12). Idempotent via UNIQUE (`reminder_id`, `due_date`). Never
+  for future dates.
 - **RM3** All pre-filled fields are optional; `kind` and `name` are required. Completing an
   occurrence records an ordinary transaction (T1–T4 apply) with the date defaulting to
   `due_date`, and sets `status = recorded` and `transaction_id`.
@@ -118,8 +120,8 @@ data) or ignores it.
   - Recurring tab gets a **Reminders** section (list, add, edit, delete, active toggle).
   - Open occurrences show as a banner on every page; tapping one opens the Add transaction
     form pre-filled from the reminder, with **Record** and **Ignore**.
-  - The notification links to the app; a deep link to the occurrence is used if Ingress
-    keeps the URL hash (verified in M13), otherwise the banner is the way in (P3).
+  - The notification links to the app panel; the banner is the way in. No deep link: HA's
+    Ingress panel drops the URL hash (checked on the Green, 2026-11-10; P3).
 
 ### 4.4 Integration
 
@@ -231,6 +233,8 @@ Same process: one milestone at a time, tests and linters passing, review stop.
 | D8 | Suggestions are the last milestone; forecasting is discussed after this spec. |
 | D9 | Version 1.2.0. |
 | D10 | Push targets are chosen in the integration's options (notify services). |
+| D11 | A new reminder opens only its latest due date on or before today, not every date since its first date (catch-up after downtime is unchanged). |
+| D12 | Reminder due dates before the first period are skipped (they could only be ignored, P6). |
 
 ### Proposals (accepted 2026-11-10)
 
@@ -238,7 +242,7 @@ Same process: one milestone at a time, tests and linters passing, review stop.
 |---|---|---|
 | P1 | Snapshot `direction` per period like `percent`? | Yes, so past periods keep their meaning |
 | P2 | Setup wizard: suggested Savings budget defaults to positive? | Yes |
-| P3 | Notification link: deep link to the occurrence? | Only if Ingress keeps the URL hash (checked in M13); otherwise link to the app and use the banner |
+| P3 | Notification link: deep link to the occurrence? | Only if Ingress keeps the URL hash. Checked on the Green (2026-11-10): it doesn't (`/app/<slug>#/recurring` opened the dashboard), so the notification links to the app and the banner is the way in |
 | P4 | `record_reminder` / `dismiss_reminder` actions in HA? | Yes, so dashboards and automations can act on the sensor |
 | P5 | Backup file: zip of per-table CSVs, or one transactions-only CSV? | Zip of all tables (a real backup) |
 | P6 | Import upload without a multipart dependency? | Raw `application/zip` body |

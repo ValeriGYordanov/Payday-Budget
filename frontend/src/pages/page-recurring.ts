@@ -3,6 +3,7 @@ import { ApiError, api } from "../api";
 import { confirmAction } from "../components/pb-dialog";
 import "../components/pb-dialog";
 import "../components/pb-icon";
+import "../components/pb-reminder-rules";
 import { formatDate, todayIso } from "../dates";
 import { kindLabel, t } from "../i18n";
 import { UI_DELETE, UI_EDIT } from "../icons";
@@ -252,6 +253,7 @@ export class PageRecurring extends PageElement {
       >
         ${this._draft ? this.renderForm(this._draft) : nothing}
       </pb-dialog>
+      <pb-reminder-rules .settings=${this.settings} .revision=${this.revision}></pb-reminder-rules>
     `;
   }
 }

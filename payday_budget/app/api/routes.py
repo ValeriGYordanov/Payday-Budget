@@ -19,6 +19,7 @@ from app.schemas import (
     PeriodCreate,
     PeriodUpdate,
     RecurringBody,
+    ReminderBody,
     SettingsUpdate,
     SetupRequest,
     TagBody,
@@ -29,6 +30,7 @@ from app.services import (
     categories,
     periods,
     recurring,
+    reminders,
     reports,
     settings,
     setup,
@@ -386,6 +388,94 @@ def update_recurring(
 @router.delete("/recurring/{rule_id}", status_code=204)
 def delete_recurring(rule_id: int, session: SessionDep) -> Response:
     recurring.remove(session, recurring.get(session, rule_id))
+    session.commit()
+    return NO_CONTENT
+
+
+# --- reminders (v1.2 §4.3) ------------------------------------------------------
+# Occurrence routes come first: "/reminders/occurrences" must not match "/reminders/{id}".
+
+
+@router.get("/reminders/occurrences")
+def list_reminder_occurrences(session: SessionDep, status: str | None = None) -> dict[str, Any]:
+    return {
+        "items": [
+            reminders.serialize_occurrence(session, o)
+            for o in reminders.occurrences(session, status)
+        ]
+    }
+
+
+@router.get("/reminders/occurrences/{occurrence_id}")
+def get_reminder_occurrence(occurrence_id: int, session: SessionDep) -> dict[str, Any]:
+    occurrence = reminders.get_occurrence(session, occurrence_id)
+    return reminders.serialize_occurrence(session, occurrence)
+
+
+@router.post("/reminders/occurrences/{occurrence_id}/record", status_code=201)
+def record_reminder_occurrence(
+    occurrence_id: int,
+    body: TransactionBody,
+    session: SessionDep,
+    actor: ActorDep,
+    today: TodayDep,
+) -> dict[str, Any]:
+    transaction_id = reminders.record(
+        session,
+        reminders.get_occurrence(session, occurrence_id),
+        fields=body.given(),
+        actor=actor,
+        today=today,
+    )
+    session.commit()
+    return transactions.serialize_one(session, transactions.get(session, transaction_id))
+
+
+@router.post("/reminders/occurrences/{occurrence_id}/dismiss")
+def dismiss_reminder_occurrence(occurrence_id: int, session: SessionDep) -> dict[str, Any]:
+    occurrence = reminders.dismiss(session, reminders.get_occurrence(session, occurrence_id))
+    session.commit()
+    return reminders.serialize_occurrence(session, occurrence)
+
+
+@router.post("/reminders/occurrences/{occurrence_id}/notified")
+def notified_reminder_occurrence(occurrence_id: int, session: SessionDep) -> dict[str, Any]:
+    occurrence = reminders.mark_notified(session, reminders.get_occurrence(session, occurrence_id))
+    session.commit()
+    return reminders.serialize_occurrence(session, occurrence)
+
+
+@router.get("/reminders")
+def list_reminders(session: SessionDep) -> dict[str, Any]:
+    return {"items": [reminders.serialize(session, r) for r in reminders.listing(session)]}
+
+
+@router.post("/reminders", status_code=201)
+def create_reminder(body: ReminderBody, session: SessionDep, today: TodayDep) -> dict[str, Any]:
+    reminder = reminders.create(session, values=body.model_dump(), today=today)
+    session.commit()
+    return reminders.serialize(session, reminder)
+
+
+@router.get("/reminders/{reminder_id}")
+def get_reminder(reminder_id: int, session: SessionDep) -> dict[str, Any]:
+    return reminders.serialize(session, reminders.get(session, reminder_id))
+
+
+@router.patch("/reminders/{reminder_id}")
+def update_reminder(
+    reminder_id: int, body: ReminderBody, session: SessionDep, today: TodayDep
+) -> dict[str, Any]:
+    reminder = reminders.update(
+        session, reminders.get(session, reminder_id), fields=body.given(), today=today
+    )
+    session.commit()
+    return reminders.serialize(session, reminder)
+
+
+@router.delete("/reminders/{reminder_id}", status_code=204)
+def delete_reminder(reminder_id: int, session: SessionDep) -> Response:
+    reminders.remove(session, reminders.get(session, reminder_id))
     session.commit()
     return NO_CONTENT
 

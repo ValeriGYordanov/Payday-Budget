@@ -98,6 +98,51 @@ export interface Page<T> {
   offset: number;
 }
 
+/** v1.2 §4: a reminder repeats like a recurring rule but never creates a transaction. */
+export interface Reminder {
+  id: number;
+  name: string;
+  kind: Kind;
+  amount_minor: number | null;
+  category_id: number | null;
+  category_name: string | null;
+  budget_id: number | null;
+  budget_name: string | null;
+  description: string | null;
+  tags: string[];
+  frequency: Frequency;
+  interval: number;
+  anchor_date: string;
+  end_date: string | null;
+  active: boolean;
+  last_opened_date: string | null;
+}
+
+/** Transaction fields from the reminder as it is now (archived category/budget left out). */
+export interface ReminderPrefill {
+  kind: Kind;
+  amount_minor: number | null;
+  category_id: number | null;
+  category_name: string | null;
+  budget_id: number | null;
+  budget_name: string | null;
+  date: string;
+  description: string | null;
+  tags: string[];
+}
+
+export interface ReminderOccurrence {
+  id: number;
+  reminder_id: number;
+  name: string;
+  due_date: string;
+  status: "open" | "recorded" | "dismissed";
+  transaction_id: number | null;
+  notified_at: string | null;
+  closed_at: string | null;
+  prefill: ReminderPrefill;
+}
+
 export interface RecurringRule {
   id: number;
   kind: Kind;
