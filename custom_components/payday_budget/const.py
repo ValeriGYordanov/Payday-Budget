@@ -8,6 +8,8 @@ NAME: Final = "Payday Budget"
 
 CONF_TOKEN: Final = "token"
 CONF_SLUG: Final = "slug"
+# v1.2 §4.5 option: notify services (e.g. "mobile_app_pixel") that get reminder pushes.
+CONF_NOTIFY_SERVICES: Final = "notify_services"
 DEFAULT_PORT: Final = 8099
 
 # §7.1: fallback polling; SSE `changed` events refresh sooner.

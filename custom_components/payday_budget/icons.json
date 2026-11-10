@@ -14,7 +14,8 @@
       "budget_used": { "default": "mdi:percent" },
       "recent_transactions": { "default": "mdi:format-list-bulleted" },
       "categories": { "default": "mdi:shape-outline" },
-      "budgets": { "default": "mdi:wallet-outline" }
+      "budgets": { "default": "mdi:wallet-outline" },
+      "reminders": { "default": "mdi:bell-outline" }
     },
     "binary_sensor": {
       "budget_over_target": { "default": "mdi:check-circle-outline", "state": { "on": "mdi:alert-circle" } },
@@ -33,6 +34,8 @@
     "list_transactions": { "service": "mdi:format-list-bulleted" },
     "add_category": { "service": "mdi:shape-plus" },
     "update_category": { "service": "mdi:shape-outline" },
-    "delete_category": { "service": "mdi:delete" }
+    "delete_category": { "service": "mdi:delete" },
+    "record_reminder": { "service": "mdi:bell-check" },
+    "dismiss_reminder": { "service": "mdi:bell-off" }
   }
 }

@@ -158,6 +158,24 @@ async def resolve_tag(client: PaydayBudgetClient, ref: str | int) -> int:
     return int(found[0]["id"])
 
 
+def reminder_item(occurrence: dict[str, Any], currency: str, minor_unit: int) -> dict[str, Any]:
+    """An open reminder occurrence for the sensor (v1.2 §4.4); money as a decimal string."""
+    prefill = occurrence["prefill"]
+    amount = prefill["amount_minor"]
+    return {
+        "id": occurrence["id"],
+        "reminder_id": occurrence["reminder_id"],
+        "name": occurrence["name"],
+        "due_date": occurrence["due_date"],
+        "kind": prefill["kind"],
+        "amount": None if amount is None else to_str(amount, minor_unit),
+        "currency": currency,
+        "category": prefill["category_name"],
+        "budget": prefill["budget_name"],
+        "description": prefill["description"],
+    }
+
+
 def transaction_item(transaction: dict[str, Any], currency: str, minor_unit: int) -> dict[str, Any]:
     """A transaction in the v1.1 §4.1 shape; money as an exact decimal string (RT2)."""
     return {

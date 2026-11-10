@@ -324,3 +324,78 @@ async def test_end_to_end_transactions_and_categories(
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+async def test_end_to_end_reminders(hass: HomeAssistant, real_addon: RealAddon) -> None:
+    """v1.2 §4: a due reminder reaches HA, is notified once, and is recorded by action."""
+    from homeassistant.components.persistent_notification import (
+        _async_get_or_create_notifications,
+    )
+    from pytest_homeassistant_custom_component.common import async_mock_service
+
+    from custom_components.payday_budget.const import CONF_NOTIFY_SERVICES
+
+    pushes = async_mock_service(hass, "notify", "mobile_app_fold")
+    host, port = real_addon.base.removeprefix("http://").split(":")
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=DOMAIN,
+        data={CONF_HOST: host, CONF_PORT: int(port), CONF_TOKEN: real_addon.token},
+        options={CONF_NOTIFY_SERVICES: ["mobile_app_fold"]},
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    entry.runtime_data.coordinator._debounced_refresh.cooldown = 0.1
+
+    def state(entity_id: str) -> str | None:
+        current = hass.states.get(entity_id)
+        return current.state if current else None
+
+    utilities = next(
+        c["id"]
+        for c in real_addon.call("GET", "categories?kind=expense")["items"]
+        if c["name"] == "Utilities"
+    )
+    today = dt.datetime.now(dt.UTC).date().isoformat()
+    await hass.async_add_executor_job(
+        real_addon.call,
+        "POST",
+        "reminders",
+        {
+            "name": "Electricity",
+            "kind": "expense",
+            "category_id": utilities,
+            "frequency": "monthly",
+            "anchor_date": today,
+        },
+    )
+    await _wait_for(hass, lambda: state("sensor.payday_budget_reminders") == "1", timeout=15)
+    occurrence_id = hass.states.get("sensor.payday_budget_reminders").attributes["reminders"][0][
+        "id"
+    ]
+    notification = f"payday_budget_reminder_{occurrence_id}"
+    await _wait_for(hass, lambda: len(pushes) == 1)
+    assert notification in _async_get_or_create_notifications(hass)
+    occurrence = real_addon.call("GET", f"reminders/occurrences/{occurrence_id}")
+    assert occurrence["notified_at"] is not None  # RM7: marked, so never pushed again
+
+    response = await hass.services.async_call(
+        DOMAIN,
+        "record_reminder",
+        {"occurrence": occurrence_id, "amount": "83.12", "budget": "Needs"},
+        blocking=True,
+        return_response=True,
+    )
+    transaction = real_addon.call("GET", f"transactions/{response['transaction_id']}")
+    assert (transaction["amount_minor"], transaction["category_name"], transaction["date"]) == (
+        8312,
+        "Utilities",
+        today,
+    )
+    await _wait_for(hass, lambda: state("sensor.payday_budget_reminders") == "0", timeout=15)
+    await _wait_for(hass, lambda: notification not in _async_get_or_create_notifications(hass))
+    assert len(pushes) == 1
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()

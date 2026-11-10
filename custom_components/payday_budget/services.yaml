@@ -197,3 +197,41 @@ delete_category:
           options:
             - income
             - expense
+
+record_reminder:
+  fields:
+    occurrence:
+      required: true
+      selector:
+        number:
+          min: 1
+          mode: box
+    amount:
+      example: "83.12"
+      selector:
+        text:
+    category:
+      selector:
+        text:
+    budget:
+      selector:
+        text:
+    date:
+      selector:
+        date:
+    description:
+      selector:
+        text:
+    tags:
+      selector:
+        text:
+          multiple: true
+
+dismiss_reminder:
+  fields:
+    occurrence:
+      required: true
+      selector:
+        number:
+          min: 1
+          mode: box

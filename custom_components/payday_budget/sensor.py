@@ -14,7 +14,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import PaydayBudgetConfigEntry, PaydayBudgetCoordinator
 from .entity import BudgetEntity, PaydayBudgetEntity, track_budget_entities
-from .helpers import transaction_item
+from .helpers import reminder_item, transaction_item
 from .money import to_decimal, to_str
 
 PARALLEL_UPDATES = 0
@@ -38,6 +38,7 @@ async def async_setup_entry(
             RecentTransactionsSensor(coordinator),
             CategoriesSensor(coordinator),
             BudgetsSensor(coordinator),
+            RemindersSensor(coordinator),
         ]
     )
 
@@ -231,6 +232,27 @@ class BudgetsSensor(PaydayBudgetEntity, SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         fields = ("id", "name", "percent", "direction", "archived", "sort_order")
         return {"budgets": [{f: b[f] for f in fields} for b in self.coordinator.data.budgets]}
+
+
+class RemindersSensor(PaydayBudgetEntity, SensorEntity):
+    """v1.2 §4.4. State: open reminder occurrences; `reminders` lists them (unrecorded)."""
+
+    _attr_translation_key = "reminders"
+    _unrecorded_attributes = frozenset({"reminders"})
+
+    def __init__(self, coordinator: PaydayBudgetCoordinator) -> None:
+        super().__init__(coordinator, "reminders")
+
+    @property
+    def native_value(self) -> int:
+        return len(self.coordinator.data.reminders)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        data = self.coordinator.data
+        return {
+            "reminders": [reminder_item(o, data.currency, data.minor_unit) for o in data.reminders]
+        }
 
 
 class BudgetAmountSensor(BudgetEntity, MoneySensor):

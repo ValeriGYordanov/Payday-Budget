@@ -30,6 +30,7 @@ class PaydayBudgetData:
     categories: list[dict[str, Any]]
     recent: list[dict[str, Any]]  # newest RECENT_LIMIT transactions, any period
     current_count: int | None  # transactions in the current period; None without one
+    reminders: list[dict[str, Any]]  # open reminder occurrences (v1.2 §4.4)
 
     @property
     def currency(self) -> str:
@@ -67,13 +68,22 @@ class PaydayBudgetCoordinator(DataUpdateCoordinator[PaydayBudgetData]):
 
     async def _async_update_data(self) -> PaydayBudgetData:
         try:
-            settings, budgets, periods, history, categories, recent = await asyncio.gather(
+            (
+                settings,
+                budgets,
+                periods,
+                history,
+                categories,
+                recent,
+                reminders,
+            ) = await asyncio.gather(
                 self.client.get("settings"),
                 self.client.get("budgets"),
                 self.client.get("periods"),
                 self.client.get("periods/history", limit=HISTORY_LIMIT),
                 self.client.get("categories"),
                 self.client.get("transactions", limit=RECENT_LIMIT),
+                self.client.get("reminders/occurrences", status="open"),
             )
             try:
                 summary, current = await asyncio.gather(
@@ -97,6 +107,7 @@ class PaydayBudgetCoordinator(DataUpdateCoordinator[PaydayBudgetData]):
             categories=categories["items"],
             recent=recent["items"],
             current_count=None if current is None else int(current["total"]),
+            reminders=reminders["items"],
         )
 
     async def listen(self) -> None:

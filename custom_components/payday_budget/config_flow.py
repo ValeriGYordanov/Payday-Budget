@@ -10,13 +10,24 @@ from collections.abc import Mapping
 from typing import Any
 
 import probatio
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlow,
+)
 from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.selector import (
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+)
 from homeassistant.helpers.service_info.hassio import HassioServiceInfo
 
 from .api import CannotConnect, InvalidAuth, PaydayBudgetClient, PaydayBudgetError
-from .const import CONF_SLUG, CONF_TOKEN, DEFAULT_PORT, DOMAIN, NAME
+from .const import CONF_NOTIFY_SERVICES, CONF_SLUG, CONF_TOKEN, DEFAULT_PORT, DOMAIN, NAME
 
 
 class PaydayBudgetConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -25,6 +36,11 @@ class PaydayBudgetConfigFlow(ConfigFlow, domain=DOMAIN):
     def __init__(self) -> None:
         self._discovered: dict[str, Any] = {}
         self._addon_name = NAME
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
+        return PaydayBudgetOptionsFlow()
 
     async def _validate(self, host: str, port: int, token: str) -> str | None:
         """Return an error key, or None if the add-on accepts the token."""
@@ -116,3 +132,28 @@ class PaydayBudgetConfigFlow(ConfigFlow, domain=DOMAIN):
             data_schema=probatio.Schema({probatio.Required(CONF_TOKEN): str}),
             errors=errors,
         )
+
+
+class PaydayBudgetOptionsFlow(OptionsFlow):
+    """v1.2 §4.5: which notify services get reminder pushes."""
+
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        if user_input is not None:
+            return self.async_create_entry(data=user_input)
+        current: list[str] = self.config_entry.options.get(CONF_NOTIFY_SERVICES, [])
+        # Legacy notify services (e.g. mobile_app_*); keep a configured one even if gone.
+        available = sorted(
+            set(self.hass.services.async_services_for_domain("notify"))
+            - {"send_message", "persistent_notification"}
+            | set(current)
+        )
+        schema = probatio.Schema(
+            {
+                probatio.Optional(CONF_NOTIFY_SERVICES, default=current): SelectSelector(
+                    SelectSelectorConfig(
+                        options=available, multiple=True, mode=SelectSelectorMode.LIST
+                    )
+                )
+            }
+        )
+        return self.async_show_form(step_id="init", data_schema=schema)

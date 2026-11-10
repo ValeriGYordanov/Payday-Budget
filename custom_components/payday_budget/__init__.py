@@ -12,6 +12,7 @@ from .api import PaydayBudgetClient
 from .const import CONF_TOKEN, DOMAIN
 from .coordinator import PaydayBudgetConfigEntry, PaydayBudgetCoordinator, PaydayBudgetRuntime
 from .frontend import async_register_cards
+from .notifications import ReminderNotifier
 from .services import async_register_services
 from .websocket import async_register_websocket_commands
 
@@ -37,6 +38,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: PaydayBudgetConfigEntry)
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = PaydayBudgetRuntime(client=client, coordinator=coordinator)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    # v1.2 §4.4: reminder notifications follow every refresh.
+    notifier = ReminderNotifier(hass, entry)
+    entry.async_on_unload(coordinator.async_add_listener(notifier.schedule))
+    entry.async_on_unload(notifier.dismiss_all)
+    notifier.schedule()
     # §7.1: refresh on every SSE `changed`; cancelled automatically on unload.
     entry.async_create_background_task(hass, coordinator.listen(), f"{DOMAIN}_events")
     return True

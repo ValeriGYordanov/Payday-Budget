@@ -99,6 +99,15 @@ UPDATE_CATEGORY_SCHEMA = probatio.Schema(
         probatio.Optional("archived"): cv.boolean,
     }
 )
+RECORD_REMINDER_SCHEMA = probatio.Schema(
+    {
+        probatio.Required("occurrence"): probatio.Coerce(int),
+        probatio.Optional("amount"): AMOUNT,
+        probatio.Optional("category"): ID_OR_NAME,
+        **OPTIONAL_FIELDS,
+    }
+)
+DISMISS_REMINDER_SCHEMA = probatio.Schema({probatio.Required("occurrence"): probatio.Coerce(int)})
 DELETE_CATEGORY_SCHEMA = probatio.Schema(
     {probatio.Required("category"): ID_OR_NAME, probatio.Optional("kind"): KINDS}
 )
@@ -338,6 +347,38 @@ async def _delete_category(call: ServiceCall) -> None:
     await entry.runtime_data.coordinator.async_request_refresh()
 
 
+async def _record_reminder(call: ServiceCall) -> ServiceResponse:
+    """v1.2 §4.4 (RM3): record a due reminder; fields not given come from its pre-fill."""
+    entry = _entry(call.hass)
+    client = entry.runtime_data.client
+    occurrence_id = call.data["occurrence"]
+    try:
+        occurrence = await client.get(f"reminders/occurrences/{occurrence_id}")
+        body = await _body(client, entry, dict(call.data), occurrence["prefill"]["kind"])
+        result = await client.request(
+            "POST",
+            f"reminders/occurrences/{occurrence_id}/record",
+            json=body,
+            actor=await actor_for(call.hass, call.context),
+        )
+    except PaydayBudgetError as err:
+        raise_for(err)
+    await entry.runtime_data.coordinator.async_request_refresh()
+    return {"transaction_id": result["id"]}
+
+
+async def _dismiss_reminder(call: ServiceCall) -> None:
+    """RM4: ignore a due reminder."""
+    entry = _entry(call.hass)
+    try:
+        await entry.runtime_data.client.request(
+            "POST", f"reminders/occurrences/{call.data['occurrence']}/dismiss", json={}
+        )
+    except PaydayBudgetError as err:
+        raise_for(err)
+    await entry.runtime_data.coordinator.async_request_refresh()
+
+
 def async_register_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN, "add_transaction", _add, ADD_SCHEMA, SupportsResponse.OPTIONAL
@@ -367,4 +408,14 @@ def async_register_services(hass: HomeAssistant) -> None:
     )
     hass.services.async_register(
         DOMAIN, "delete_category", _delete_category, DELETE_CATEGORY_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN,
+        "record_reminder",
+        _record_reminder,
+        RECORD_REMINDER_SCHEMA,
+        SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN, "dismiss_reminder", _dismiss_reminder, DISMISS_REMINDER_SCHEMA
     )

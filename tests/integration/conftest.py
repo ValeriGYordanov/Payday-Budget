@@ -110,6 +110,38 @@ def transaction(
     }
 
 
+def occurrence(
+    occurrence_id: int,
+    name: str,
+    due_date: str,
+    *,
+    amount_minor: int | None = None,
+    notified: bool = False,
+) -> dict[str, Any]:
+    """An open reminder occurrence as the add-on's API returns it."""
+    return {
+        "id": occurrence_id,
+        "reminder_id": 50 + occurrence_id,
+        "name": name,
+        "due_date": due_date,
+        "status": "open",
+        "transaction_id": None,
+        "notified_at": "2026-11-01T00:05:00+00:00" if notified else None,
+        "closed_at": None,
+        "prefill": {
+            "kind": "expense",
+            "amount_minor": amount_minor,
+            "category_id": 11,
+            "category_name": "Food",
+            "budget_id": 1,
+            "budget_name": "Needs",
+            "date": due_date,
+            "description": None,
+            "tags": [],
+        },
+    }
+
+
 class FakeAddon:
     """In-memory stand-in for the add-on REST API (§6.4)."""
 
@@ -149,6 +181,7 @@ class FakeAddon:
             transaction(7, "2026-11-01", "income", 300000, 10, "Salary", None, None, rule=5),
         ]
         self.current_total = 2
+        self.occurrences: list[dict[str, Any]] = []  # open reminder occurrences
         self.periods = [PERIOD_CURRENT, PERIOD_PREVIOUS]  # newest first, like the API
         self.summary: dict[str, Any] | None = {
             "period": PERIOD_CURRENT,
@@ -202,6 +235,12 @@ class FakeAddon:
                         copy.deepcopy(c) for c in self.categories if kind in (None, c["kind"])
                     ]
                 }
+            if path == "reminders/occurrences":
+                assert params.get("status") == "open"
+                return {"items": copy.deepcopy(self.occurrences)}
+            if path.startswith("reminders/occurrences/"):
+                found = next(o for o in self.occurrences if o["id"] == int(path.split("/")[2]))
+                return copy.deepcopy(found)
             if path == "tags":
                 return {"items": copy.deepcopy(self.tags)}
             if path == "transactions":
@@ -235,6 +274,14 @@ class FakeAddon:
             if path.startswith("categories/"):
                 self.categories = [c for c in self.categories if c["id"] != int(path.split("/")[1])]
             return None
+        if method == "POST" and path.startswith("reminders/occurrences/"):
+            _, _, occurrence_id, action = path.split("/")
+            found = next(o for o in self.occurrences if o["id"] == int(occurrence_id))
+            if action == "notified":
+                found["notified_at"] = "2026-11-02T10:00:00+00:00"
+                return copy.deepcopy(found)
+            self.occurrences.remove(found)  # record / dismiss close it
+            return {"id": 120} if action == "record" else {**found, "status": "dismissed"}
         if method == "POST" and path == "categories":
             self.categories.append(category(40, json["name"], json["kind"], json["icon"]))
             return copy.deepcopy(self.categories[-1])

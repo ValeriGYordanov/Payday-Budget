@@ -38,6 +38,16 @@
       "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]"
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Reminder notifications",
+        "description": "Reminders always show as a Home Assistant notification. Choose where else to push them.",
+        "data": { "notify_services": "Push to" },
+        "data_description": { "notify_services": "Notify services, e.g. your phone's mobile_app_… service. Leave empty for none." }
+      }
+    }
+  },
   "entity": {
     "sensor": {
       "period": { "name": "Period" },
@@ -53,7 +63,8 @@
       "budget_used": { "name": "{budget} used" },
       "recent_transactions": { "name": "Recent transactions" },
       "categories": { "name": "Categories" },
-      "budgets": { "name": "Budgets" }
+      "budgets": { "name": "Budgets" },
+      "reminders": { "name": "Reminders" }
     },
     "binary_sensor": {
       "budget_over_target": { "name": "{budget} over target" },
@@ -164,6 +175,26 @@
         "name": { "name": "New name", "description": "Unique within its kind." },
         "icon": { "name": "Icon", "description": "An mdi icon." },
         "archived": { "name": "Archived", "description": "Archived categories cannot be used for new transactions." }
+      }
+    },
+    "record_reminder": {
+      "name": "Record reminder",
+      "description": "Records the transaction for a due reminder. Fields left out come from the reminder.",
+      "fields": {
+        "occurrence": { "name": "Reminder", "description": "Id of the due reminder (from the reminders sensor)." },
+        "amount": { "name": "Amount", "description": "Positive amount in major units, e.g. 12.50." },
+        "category": { "name": "Category", "description": "Category name or id (same kind)." },
+        "budget": { "name": "Budget", "description": "Budget name or id. Expenses only." },
+        "date": { "name": "Date", "description": "Defaults to the due date." },
+        "description": { "name": "Description", "description": "Optional, up to 500 characters." },
+        "tags": { "name": "Tags", "description": "Tag names." }
+      }
+    },
+    "dismiss_reminder": {
+      "name": "Ignore reminder",
+      "description": "Ignores a due reminder; it does not come back.",
+      "fields": {
+        "occurrence": { "name": "Reminder", "description": "Id of the due reminder (from the reminders sensor)." }
       }
     },
     "delete_category": {
