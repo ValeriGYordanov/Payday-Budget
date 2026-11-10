@@ -13,11 +13,11 @@ export class ApiError extends Error {
 
 const BASE = "api/v1/";
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+async function request<T>(method: string, path: string, body?: unknown, raw?: Blob): Promise<T> {
   const response = await fetch(BASE + path.replace(/^\//, ""), {
     method,
-    headers: body === undefined ? {} : { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    headers: raw ? { "Content-Type": raw.type || "application/octet-stream" } : body === undefined ? {} : { "Content-Type": "application/json" },
+    body: raw ?? (body === undefined ? undefined : JSON.stringify(body)),
     credentials: "same-origin",
   });
   if (response.status === 204) return undefined as T;
@@ -38,6 +38,8 @@ export const api = {
   post: <T>(path: string, body: unknown) => request<T>("POST", path, body),
   patch: <T>(path: string, body: unknown) => request<T>("PATCH", path, body),
   delete: (path: string) => request<void>("DELETE", path),
+  /** POST a file as the raw request body (v1.2 §5.3: no multipart). */
+  upload: <T>(path: string, file: Blob) => request<T>("POST", path, undefined, file),
 };
 
 /** Query string from defined, non-empty values. */

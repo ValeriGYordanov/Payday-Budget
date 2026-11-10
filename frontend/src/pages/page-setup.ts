@@ -3,6 +3,7 @@ import { api } from "../api";
 import { todayIso } from "../dates";
 import { t } from "../i18n";
 import { UI_DELETE } from "../icons";
+import "../components/pb-backup-import";
 import "../components/pb-icon";
 import { PageElement } from "../page";
 import { shared } from "../styles";
@@ -159,7 +160,14 @@ export class PageSetup extends PageElement {
   }
 
   override render() {
-    return html`<h1>${t("setup.title")}</h1><div class="card">${this.renderStep()}</div>`;
+    return html`<h1>${t("setup.title")}</h1>
+      <div class="card">${this.renderStep()}</div>
+      ${this._step === 0
+        ? html`<div class="card">
+            <p class="muted">${t("setup.restore_hint")}</p>
+            <pb-backup-import></pb-backup-import>
+          </div>`
+        : nothing}`;
   }
 }
 define("page-setup", PageSetup);

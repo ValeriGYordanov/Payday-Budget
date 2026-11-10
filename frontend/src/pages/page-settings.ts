@@ -1,3 +1,4 @@
+import "../components/pb-backup-import";
 import { html, nothing } from "lit";
 import { api } from "../api";
 import { confirmAction } from "../components/pb-dialog";
@@ -85,6 +86,12 @@ export class PageSettings extends PageElement {
           </button>
         </div>
         <p class="muted">${t("settings.token_hint")}</p>
+      </div>
+      <div class="card">
+        <h2>${t("backup.title")}</h2>
+        <p class="muted">${t("backup.hint")}</p>
+        <div class="actions"><a class="button" href="api/v1/export" download>${t("backup.export")}</a></div>
+        <pb-backup-import></pb-backup-import>
       </div>
       <p class="muted">${t("settings.version", { version: __APP_VERSION__ })}</p>
       ${nothing}

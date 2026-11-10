@@ -6,6 +6,7 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 from fastapi import APIRouter, Query, Request, Response
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 
 from app.api.deps import ActorDep, IngressOnly, SessionDep, TodayDep
@@ -26,6 +27,7 @@ from app.schemas import (
     TransactionBody,
 )
 from app.services import (
+    backup,
     budgets,
     categories,
     periods,
@@ -57,6 +59,40 @@ def list_currencies() -> dict[str, Any]:
 def list_users(session: SessionDep) -> dict[str, Any]:
     """People who created transactions or periods (T3), for the user filter."""
     return {"items": users.listing(session)}
+
+
+# --- backup (v1.2 §5) -----------------------------------------------------------
+
+
+@router.get("/export")
+def export_backup(request: Request, session: SessionDep, today: TodayDep) -> Response:
+    """EX1: everything, in Payday Budget's own format."""
+    data = backup.export_zip(session, app_version=request.app.version, now=dt.datetime.now(dt.UTC))
+    return Response(
+        content=data,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="payday-budget-{today.isoformat()}.zip"'
+        },
+    )
+
+
+@router.post("/import")
+async def import_backup(
+    request: Request, session: SessionDep, today: TodayDep, confirm: bool = False
+) -> dict[str, Any]:
+    """EX2-EX6: `confirm=false` validates and reports counts only; `confirm=true` replaces."""
+    data = await request.body()
+
+    def work() -> dict[str, Any]:
+        result = backup.run_import(session, data, today=today, apply=confirm)
+        if confirm:
+            session.commit()
+        else:
+            session.rollback()
+        return result
+
+    return await run_in_threadpool(work)
 
 
 @router.get("/settings")

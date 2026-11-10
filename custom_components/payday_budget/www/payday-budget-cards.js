@@ -661,6 +661,26 @@ var Re = {
 	"settings.copy": "Copy",
 	"settings.copied": "Copied",
 	"settings.version": "Version {version}",
+	"backup.title": "Backup",
+	"backup.hint": "Export everything to a file, or restore from one. Restoring replaces all current data.",
+	"backup.export": "Export",
+	"backup.import": "Restore from backup",
+	"backup.checking": "Checking the file…",
+	"backup.preview": "This replaces all current data:",
+	"backup.table": "Data",
+	"backup.file": "In the file",
+	"backup.now": "Now",
+	"backup.replace": "Replace all data",
+	"backup.done": "Restored.",
+	"backup.from": "Backup from {date}, version {version}",
+	"backup.periods": "Periods",
+	"backup.budgets": "Budgets",
+	"backup.categories": "Categories",
+	"backup.tags": "Tags",
+	"backup.transactions": "Transactions",
+	"backup.recurring_rules": "Recurring transactions",
+	"backup.reminders": "Reminders",
+	"setup.restore_hint": "Moving to a new install? Restore a Payday Budget backup instead of setting up.",
 	"setup.title": "Welcome to Payday Budget",
 	"setup.step_currency": "1. Currency",
 	"setup.step_period": "2. First period",
@@ -8519,7 +8539,8 @@ var Tu = l`
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
-  button {
+  button,
+  a.button {
     font: inherit;
     border-radius: 8px;
     border: 1px solid var(--pb-border);
@@ -8528,6 +8549,12 @@ var Tu = l`
     padding: 8px 14px;
     min-height: 40px;
     cursor: pointer;
+  }
+  a.button {
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
+    text-decoration: none;
   }
   button.primary {
     background: var(--pb-primary);

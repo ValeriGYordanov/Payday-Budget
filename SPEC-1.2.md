@@ -176,9 +176,12 @@ data) or ignores it.
 
 ### 5.3 API and UI
 
-- `GET /api/v1/export` → the zip. `POST /api/v1/import` with the zip as the raw request body
-  (`application/zip`), so no multipart dependency is added (P6).
-- UI: Settings → **Backup** — Export button; Import (file picker → summary → confirm).
+- `GET /api/v1/export` → the zip. `POST /api/v1/import?confirm=false|true` with the zip as the
+  raw request body (`application/zip`), so no multipart dependency is added (P6).
+  `confirm=false` validates the whole file and returns the row counts (file vs. now) without
+  changing anything; `confirm=true` replaces (D14).
+- UI: Settings → **Backup** — Export button; Import (file picker → preview with counts or the
+  first error → **Replace**). The setup wizard offers the same **Restore from backup** (D13).
 - Not exposed to HA (no actions, no entities).
 
 ## 6. Suggestions from history (last milestone)
@@ -235,6 +238,8 @@ Same process: one milestone at a time, tests and linters passing, review stop.
 | D10 | Push targets are chosen in the integration's options (notify services). |
 | D11 | A new reminder opens only its latest due date on or before today, not every date since its first date (catch-up after downtime is unchanged). |
 | D12 | Reminder due dates before the first period are skipped (they could only be ignored, P6). |
+| D13 | The setup wizard also offers "Restore from backup", so a backup can be restored onto a fresh install. |
+| D14 | Import is preview-then-confirm: picking a file validates it and shows counts (file vs. now) or the first error; nothing changes until Replace. |
 
 ### Proposals (accepted 2026-11-10)
 

@@ -46,7 +46,8 @@ export const shared = css`
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
-  button {
+  button,
+  a.button {
     font: inherit;
     border-radius: 8px;
     border: 1px solid var(--pb-border);
@@ -55,6 +56,12 @@ export const shared = css`
     padding: 8px 14px;
     min-height: 40px;
     cursor: pointer;
+  }
+  a.button {
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
+    text-decoration: none;
   }
   button.primary {
     background: var(--pb-primary);

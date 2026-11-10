@@ -10,7 +10,7 @@ from app.errors import Conflict, InvalidInput, NotFound, RuleViolation
 from app.models import EXPENSE, INCOME, Category, RecurringRule, Transaction
 
 DEFAULT_ICON = "mdi:tag"
-_ICON_RE = re.compile(r"^mdi:[a-z0-9]+(-[a-z0-9]+)*$")
+ICON_RE = re.compile(r"^mdi:[a-z0-9]+(-[a-z0-9]+)*$")
 
 # C3 first-run seed: (name, kind, icon).
 SEED = (
@@ -52,7 +52,7 @@ def _clean_name(session: Session, name: str, kind: str, exclude_id: int | None =
 
 
 def _check_icon(icon: str) -> str:
-    if not _ICON_RE.match(icon):
+    if not ICON_RE.match(icon):
         raise InvalidInput("icon must be an mdi:* icon name", field="icon")
     return icon
 
