@@ -1,6 +1,7 @@
 # Payday Budget — Specification v1.1
 
-> Status: approved, 2026-11-02 (D7–D11 added 2026-11-10). All decisions in §9 confirmed. Extends `SPEC.md` (v1); everything there
+> Status: **complete**, 2026-11-10. 1.1.0 released; M11 dashboards verified on the Green.
+> Approved 2026-11-02 (D7–D11 added 2026-11-10). All decisions in §9 confirmed. Extends `SPEC.md` (v1); everything there
 > still applies unless changed here. Target version: **1.1.0** for the app and the
 > integration (released together; the version test keeps them in sync).
 
