@@ -552,6 +552,7 @@ var Re = {
 	"kind.income": "Income",
 	"kind.expense": "Expense",
 	"tx.add": "Add transaction",
+	"tx.suggested_budget": "Use {name}",
 	"tx.edit": "Edit transaction",
 	"tx.kind": "Kind",
 	"tx.amount": "Amount",

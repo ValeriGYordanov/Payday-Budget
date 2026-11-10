@@ -5,7 +5,17 @@ import { kindLabel, t } from "../i18n";
 import { amountInputValue, parseAmount } from "../money";
 import { errorMessage } from "../page";
 import { shared } from "../styles";
-import type { Budget, BudgetList, Category, Kind, ReminderOccurrence, Settings, Tag, Transaction } from "../types";
+import type {
+  Budget,
+  BudgetList,
+  Category,
+  Kind,
+  ReminderOccurrence,
+  Settings,
+  Suggestions,
+  Tag,
+  Transaction,
+} from "../types";
 import { confirmAction } from "./pb-dialog";
 import "./pb-dialog";
 import { define } from "../define";
@@ -40,6 +50,7 @@ export class PbTransactionDialog extends LitElement {
     _error: { state: true },
     _errorField: { state: true },
     _busy: { state: true },
+    _suggestions: { state: true },
   };
   declare settings: Settings;
   declare _open: boolean;
@@ -53,6 +64,9 @@ export class PbTransactionDialog extends LitElement {
   declare _error: string;
   declare _errorField: string;
   declare _busy: boolean;
+  /** v1.2 §6: for new transactions only (D15); never pre-selects the budget. */
+  declare _suggestions: Suggestions | null;
+  private suggestionFor = "";
 
   constructor() {
     super();
@@ -66,6 +80,7 @@ export class PbTransactionDialog extends LitElement {
     this._error = "";
     this._errorField = "";
     this._busy = false;
+    this._suggestions = null;
   }
 
   static override styles = [
@@ -75,6 +90,12 @@ export class PbTransactionDialog extends LitElement {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 0 12px;
+      }
+      button.chip {
+        min-height: 32px;
+        padding: 4px 10px;
+        margin-top: 6px;
+        border-radius: 16px;
       }
       @media (max-width: 400px) {
         .two {
@@ -100,6 +121,8 @@ export class PbTransactionDialog extends LitElement {
   async show(transaction: Transaction | null = null) {
     this._editing = transaction;
     this._occurrence = null;
+    this._suggestions = null;
+    this.suggestionFor = "";
     this._error = "";
     this._errorField = "";
     this._form = transaction
@@ -134,7 +157,28 @@ export class PbTransactionDialog extends LitElement {
       tags: p.tags.join(", "),
     };
     this._open = true;
+    this._suggestions = null;
+    this.suggestionFor = "";
     await this.loadOptions();
+    void this.loadSuggestions(this._form.categoryId);
+  }
+
+  /** SG1/SG2 for a category; ignored when editing (D15) or once the category changed again. */
+  private async loadSuggestions(categoryId: string) {
+    this.suggestionFor = categoryId;
+    this._suggestions = null;
+    if (this._editing || !categoryId) return;
+    try {
+      const result = await api.get<Suggestions>(`suggestions?category=${categoryId}`);
+      if (this.suggestionFor === categoryId) this._suggestions = result;
+    } catch {
+      // Suggestions are optional; the form works without them.
+    }
+  }
+
+  private chooseCategory(categoryId: string) {
+    this.set("categoryId", categoryId);
+    void this.loadSuggestions(categoryId);
   }
 
   private async loadOptions() {
@@ -160,6 +204,8 @@ export class PbTransactionDialog extends LitElement {
     if (kind === this._form.kind) return;
     // Category kind must match (T2); incomes have no budget (B6).
     this._form = { ...this._form, kind, categoryId: "", budgetId: "" };
+    this._suggestions = null;
+    this.suggestionFor = "";
   }
 
   /** Active options, plus the archived one already on the transaction being edited. */
@@ -242,6 +288,16 @@ export class PbTransactionDialog extends LitElement {
     this.dispatchEvent(new CustomEvent("pb-changed", { bubbles: true, composed: true }));
   }
 
+  /** SG1: a one-tap budget, offered only while none is chosen. */
+  private renderBudgetSuggestion() {
+    const s = this._suggestions;
+    if (!s?.budget_id || this._form.budgetId || this._editing) return nothing;
+    if (!this.budgetOptions().some((b) => b.id === s.budget_id)) return nothing;
+    return html`<button type="button" class="chip" @click=${() => this.set("budgetId", String(s.budget_id))}>
+      ${t("tx.suggested_budget", { name: s.budget_name ?? "" })}
+    </button>`;
+  }
+
   private fieldError(field: string) {
     return this._errorField === field ? html`<span class="error">${this._error}</span>` : nothing;
   }
@@ -288,7 +344,7 @@ export class PbTransactionDialog extends LitElement {
               <select
                 required
                 .value=${f.categoryId}
-                @change=${(e: Event) => this.set("categoryId", (e.target as HTMLSelectElement).value)}
+                @change=${(e: Event) => this.chooseCategory((e.target as HTMLSelectElement).value)}
               >
                 <option value="" ?selected=${!f.categoryId}>${t("tx.choose")}</option>
                 ${this.categoryOptions().map(
@@ -316,6 +372,7 @@ export class PbTransactionDialog extends LitElement {
                         </option>`,
                     )}
                   </select>
+                  ${this.renderBudgetSuggestion()}
                   ${this.fieldError("budget_id")}
                 </label>`
               : nothing}
@@ -334,6 +391,8 @@ export class PbTransactionDialog extends LitElement {
             ${t("tx.description")} (${t("common.optional")})
             <input
               maxlength="500"
+              list="pb-description-options"
+              autocomplete="off"
               .value=${f.description}
               @input=${(e: InputEvent) => this.set("description", (e.target as HTMLInputElement).value)}
             />
@@ -346,6 +405,9 @@ export class PbTransactionDialog extends LitElement {
               .value=${f.tags}
               @input=${(e: InputEvent) => this.set("tags", (e.target as HTMLInputElement).value)}
             />
+            <datalist id="pb-description-options">
+              ${(this._suggestions?.descriptions ?? []).map((text) => html`<option value=${text}></option>`)}
+            </datalist>
             <datalist id="pb-tag-options">
               ${this._tags.map((tag) => html`<option value=${tag.name}></option>`)}
             </datalist>

@@ -36,6 +36,7 @@ from app.services import (
     reports,
     settings,
     setup,
+    suggestions,
     tags,
     transactions,
     users,
@@ -426,6 +427,12 @@ def delete_recurring(rule_id: int, session: SessionDep) -> Response:
     recurring.remove(session, recurring.get(session, rule_id))
     session.commit()
     return NO_CONTENT
+
+
+@router.get("/suggestions")
+def get_suggestions(category: int, session: SessionDep, today: TodayDep) -> dict[str, Any]:
+    """v1.2 §6: budget and descriptions for a new transaction in `category`."""
+    return suggestions.for_category(session, category, today)
 
 
 # --- reminders (v1.2 §4.3) ------------------------------------------------------

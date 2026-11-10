@@ -131,6 +131,13 @@ export interface ReminderPrefill {
   tags: string[];
 }
 
+/** v1.2 §6 (SG1, SG2): from history, for a new transaction in a category. */
+export interface Suggestions {
+  budget_id: number | null;
+  budget_name: string | null;
+  descriptions: string[];
+}
+
 export interface ReminderOccurrence {
   id: number;
   reminder_id: number;

@@ -194,6 +194,9 @@ Accepted as below; details are re-checked when the milestone starts (P7):
 - **SG2** The description field offers previous descriptions for the chosen category, most
   recent first.
 - **SG3** Suggestions come from SQL over existing transactions; nothing new is stored.
+  `GET /api/v1/suggestions?category=<id>` → `{budget_id, budget_name, descriptions}`.
+- Confirmed at M16 (D15): 90 days for SG1, up to 5 descriptions for SG2; shown for new
+  transactions only (Add transaction and Record from a reminder), not when editing.
 
 ## 7. Forecasting (placeholder)
 
@@ -240,6 +243,7 @@ Same process: one milestone at a time, tests and linters passing, review stop.
 | D12 | Reminder due dates before the first period are skipped (they could only be ignored, P6). |
 | D13 | The setup wizard also offers "Restore from backup", so a backup can be restored onto a fresh install. |
 | D14 | Import is preview-then-confirm: picking a file validates it and shows counts (file vs. now) or the first error; nothing changes until Replace. |
+| D15 | Suggestions: budget from the last 90 days, up to 5 descriptions, new transactions only (not when editing). |
 
 ### Proposals (accepted 2026-11-10)
 
