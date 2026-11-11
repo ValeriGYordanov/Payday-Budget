@@ -78,7 +78,10 @@ Money stays integer minor units; every division rounds half up once, at the end 
   `{period, expected_payday, overdue, days_left, basis: {periods, days}, income: {so_far,
   known, projected}, expenses: {so_far, known, flexible, projected}, balance_projected,
   safe_per_day, budgets: [{budget_id, name, direction, target, spent, known, flexible,
-  projected_spent, projected_status}], upcoming: [...]}`; amounts in minor units (`*_minor`).
+  projected_spent, projected_status}], series: [{date, balance, projected, items}],
+  upcoming: [...]}`; amounts in minor units (`*_minor`). `series` is the §7 chart's data: the
+  running balance per day, actual to today, then projected to the day before the payday
+  (added at M20, D7).
 - Dashboard: a **Forecast** card — projected balance, safe per day, expected payday, and the
   balance chart (§7) — and an **Upcoming** list. The progress bars get a projected-spent
   marker (P3).
@@ -134,6 +137,7 @@ Options as v1 (`title`); the forecast always covers the current period.
 | D4 | Cards and the app dashboard, plus sensors. |
 | D5 | A separate release, 1.3.0, with this spec. |
 | D6 | Upcoming items carry `estimated` (amount from a reminder's history, F3), so the UI can show "≈". Added at M19. |
+| D7 | `/forecast` returns `series` (daily running balance, actual then projected) for the forecast chart. Added at M20. |
 
 ### Proposals (accepted 2026-11-11)
 

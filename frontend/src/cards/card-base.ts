@@ -7,7 +7,7 @@ import type { CardConfig, HomeAssistant } from "./ha";
 const DOMAIN = "payday_budget";
 const REFRESH_DELAY_MS = 500;
 
-type Option = "period" | "budget" | "limit" | "stacked" | "title";
+type Option = "period" | "budget" | "limit" | "stacked" | "forecast" | "title";
 
 /**
  * Base for the dashboard cards (§8): validates the YAML config, fetches through
@@ -85,6 +85,9 @@ export abstract class PaydayCard extends LitElement {
     }
     if (config.stacked !== undefined && typeof config.stacked !== "boolean") {
       throw new Error("stacked must be true or false");
+    }
+    if (config.forecast !== undefined && typeof config.forecast !== "boolean") {
+      throw new Error("forecast must be true or false");
     }
     if (config.budget !== undefined && !["string", "number"].includes(typeof config.budget)) {
       throw new Error("budget must be a budget name or id");

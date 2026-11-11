@@ -4,15 +4,22 @@ import "../components/charts/pb-category-chart";
 import "../components/charts/pb-pace-chart";
 import "../components/charts/pb-periods-chart";
 import "../components/charts/pb-progress-chart";
+import "../components/pb-forecast-summary";
+import "../components/pb-upcoming-list";
 import { t } from "../i18n";
-import type { Breakdown, Daily, HistoryItem, Summary } from "../types";
+import type { Breakdown, Daily, Forecast, HistoryItem, Summary } from "../types";
 import { PaydayCard, matchesBudget } from "./card-base";
 
-/** Per budget: target vs spent bars, plus unallocated. Options: period, budget, title. */
+/** Per budget: target vs spent bars, plus unallocated. Options: period, budget, forecast, title. */
 export class ProgressCard extends PaydayCard {
-  static override properties = { ...PaydayCard.properties, _summary: { state: true } };
+  static override properties = {
+    ...PaydayCard.properties,
+    _summary: { state: true },
+    _forecast: { state: true },
+  };
   declare _summary: Summary | null;
-  protected readonly options = ["period", "budget", "title"] as const;
+  declare _forecast: Forecast | null;
+  protected readonly options = ["period", "budget", "forecast", "title"] as const;
   protected readonly rows = 6;
 
   protected defaultTitle() {
@@ -20,7 +27,14 @@ export class ProgressCard extends PaydayCard {
   }
 
   protected async fetchData() {
-    this._summary = await this.ws<Summary>("summary", { period: this.period() });
+    // v1.3 (P3): the projected marker is for the current period only.
+    const withForecast = this._config.forecast === true && this.period() === "current";
+    const [summary, forecast] = await Promise.all([
+      this.ws<Summary>("summary", { period: this.period() }),
+      withForecast ? this.ws<Forecast>("forecast") : Promise.resolve(null),
+    ]);
+    this._summary = summary;
+    this._forecast = forecast;
   }
 
   protected renderContent() {
@@ -28,7 +42,11 @@ export class ProgressCard extends PaydayCard {
     if (!s) return html``;
     const budget = this._config.budget;
     const shown = { ...s, budgets: s.budgets.filter((b) => matchesBudget(budget, b.budget_id, b.name)) };
-    return html`<pb-progress-chart .summary=${shown} .showUnallocated=${budget === undefined}></pb-progress-chart>`;
+    return html`<pb-progress-chart
+      .summary=${shown}
+      .showUnallocated=${budget === undefined}
+      .forecast=${this._forecast}
+    ></pb-progress-chart>`;
   }
 }
 
@@ -138,5 +156,45 @@ export class PaceCard extends PaydayCard {
       .currency=${this.currencyOf(s)}
       .theme=${this._theme}
     ></pb-pace-chart>`;
+  }
+}
+
+/** v1.3 §7: projected balance, safe per day, expected payday and the balance chart. Options: title. */
+export class ForecastCard extends PaydayCard {
+  static override properties = { ...PaydayCard.properties, _forecast: { state: true } };
+  declare _forecast: Forecast | null;
+  protected readonly options = ["title"] as const;
+  protected readonly rows = 6;
+
+  protected defaultTitle() {
+    return t("forecast.title");
+  }
+
+  protected async fetchData() {
+    this._forecast = await this.ws<Forecast>("forecast");
+  }
+
+  protected renderContent() {
+    return html`<pb-forecast-summary .forecast=${this._forecast} .theme=${this._theme}></pb-forecast-summary>`;
+  }
+}
+
+/** v1.3 §7: what is expected before the payday, due reminders first. Options: limit, title. */
+export class UpcomingCard extends PaydayCard {
+  static override properties = { ...PaydayCard.properties, _forecast: { state: true } };
+  declare _forecast: Forecast | null;
+  protected readonly options = ["limit", "title"] as const;
+  protected readonly rows = 4;
+
+  protected defaultTitle() {
+    return t("upcoming.title");
+  }
+
+  protected async fetchData() {
+    this._forecast = await this.ws<Forecast>("forecast");
+  }
+
+  protected renderContent() {
+    return html`<pb-upcoming-list .forecast=${this._forecast} .limit=${this._config.limit ?? 0}></pb-upcoming-list>`;
   }
 }

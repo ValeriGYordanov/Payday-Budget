@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 /**
  * §9 cards build smoke test: loads the built bundle (run `npm run build` first),
- * checks that all four cards register, and renders each from fake HA data.
+ * checks that all cards register, and renders each from fake HA data.
  */
 import { beforeAll, describe, expect, it } from "vitest";
 
@@ -12,6 +12,8 @@ const CARDS = [
   "payday-budget-periods-card",
   "payday-budget-category-card",
   "payday-budget-pace-card",
+  "payday-budget-forecast-card",
+  "payday-budget-upcoming-card",
 ];
 
 const period = {
@@ -32,6 +34,24 @@ const responses: Record<string, unknown> = {
   "payday_budget/history": { items: [{ period, income_minor: 300000, expenses_minor: 4550, budgets: [] }] },
   "payday_budget/breakdown": { period, budget_id: null, total_minor: 4550, categories: [{ category_id: 1, name: "Food", icon: "mdi:food", amount_minor: 4550 }] },
   "payday_budget/daily": { period, pace_length_days: 30, days: [{ date: "2026-11-01", spent_minor: 4550, cumulative_minor: 4550 }] },
+  "payday_budget/forecast": {
+    period, currency: "EUR", minor_unit: 2, setup_completed: true,
+    expected_payday: "2026-12-01", overdue: false, days_left: 27,
+    basis: { periods: 2, days: 60 },
+    income: { so_far_minor: 300000, known_minor: 0, projected_minor: 300000 },
+    expenses: { so_far_minor: 4550, known_minor: 8312, flexible_minor: 27000, projected_minor: 39862 },
+    balance_projected_minor: 260138, safe_per_day_minor: 10803,
+    budgets: [{ budget_id: 1, name: "Needs", direction: "negative", target_minor: 150000, spent_minor: 4550, known_minor: 8312, flexible_minor: 27000, projected_spent_minor: 39862, projected_status: "ok" }],
+    series: [
+      { date: "2026-11-01", balance_minor: 295450, projected: false, items: 0 },
+      { date: "2026-11-04", balance_minor: 295450, projected: false, items: 0 },
+      { date: "2026-11-05", balance_minor: 286138, projected: true, items: 1 },
+    ],
+    upcoming: [
+      { date: "2026-11-02", name: "Ток", kind: "expense", amount_minor: 8312, budget_id: 1, budget_name: "Needs", source: "reminder", due: true, estimated: true },
+      { date: "2026-11-15", name: "Вода", kind: "expense", amount_minor: null, budget_id: null, budget_name: null, source: "reminder", due: false, estimated: false },
+    ],
+  },
 };
 
 function fakeHass(sent: Record<string, unknown>[]) {
@@ -64,7 +84,7 @@ describe("cards bundle", () => {
     await loaders[0]();
   });
 
-  it("registers the four cards for the card picker", () => {
+  it("registers every card for the card picker", () => {
     for (const name of CARDS) expect(customElements.get(name), name).toBeDefined();
     expect(window.customCards?.map((c) => c.type)).toEqual(CARDS);
   });
@@ -99,7 +119,46 @@ describe("cards bundle", () => {
     card.remove();
   });
 
+  it("progress card shows the projected marker with forecast: true (current period only)", async () => {
+    const card = document.createElement("payday-budget-progress-card") as Card;
+    card.setConfig({ type: "custom:payday-budget-progress-card", forecast: true });
+    const sent: Record<string, unknown>[] = [];
+    card.hass = fakeHass(sent);
+    document.body.append(card);
+    await settle();
+    expect(sent.map((m) => m.type)).toEqual(["payday_budget/summary", "payday_budget/forecast"]);
+    const chart = card.shadowRoot?.querySelector("pb-progress-chart") as HTMLElement;
+    await (chart as unknown as Card).updateComplete;
+    expect(chart.shadowRoot?.querySelectorAll(".marker").length).toBe(1);
+    card.setConfig({ type: "custom:payday-budget-progress-card", forecast: true, period: "previous" });
+    sent.length = 0;
+    await settle();
+    expect(sent.map((m) => m.type)).toEqual(["payday_budget/summary"]);
+    card.remove();
+  });
+
+  it("upcoming card lists due first, estimates with ≈ and unknown amounts as ?", async () => {
+    const card = document.createElement("payday-budget-upcoming-card") as Card;
+    card.setConfig({ type: "custom:payday-budget-upcoming-card", limit: 5 });
+    card.hass = fakeHass([]);
+    document.body.append(card);
+    await settle();
+    await card.updateComplete;
+    const list = card.shadowRoot?.querySelector("pb-upcoming-list") as HTMLElement & { updateComplete: Promise<boolean> };
+    await list.updateComplete;
+    const text = list.shadowRoot?.textContent?.replace(/\s+/g, " ") ?? "";
+    expect(text).toContain("Ток");
+    expect(text).toContain("due");
+    expect(text).toContain("≈ −€83.12");
+    expect(text).toContain("?");
+    card.remove();
+  });
+
   it("rejects invalid options", () => {
+    const progress = document.createElement("payday-budget-progress-card") as Card;
+    expect(() => progress.setConfig({ type: "x", forecast: "yes" })).toThrow(/forecast/);
+    const forecast = document.createElement("payday-budget-forecast-card") as Card;
+    expect(() => forecast.setConfig({ type: "x", period: "previous" })).toThrow(/Unknown option/);
     const card = document.createElement("payday-budget-periods-card") as Card;
     expect(() => card.setConfig({ type: "x", limit: 0 })).toThrow(/limit/);
     expect(() => card.setConfig({ type: "x", budget: "Needs" })).toThrow(/Unknown option/);

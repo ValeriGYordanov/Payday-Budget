@@ -27,6 +27,7 @@ export interface CardConfig {
   budget?: string | number;
   limit?: number;
   stacked?: boolean;
+  forecast?: boolean;
 }
 
 declare global {

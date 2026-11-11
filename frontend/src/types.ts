@@ -138,6 +138,46 @@ export interface Suggestions {
   descriptions: string[];
 }
 
+/** v1.3 forecast for the current period (F1-F9). */
+export interface ForecastBudget {
+  budget_id: number;
+  name: string;
+  direction: Direction;
+  target_minor: number;
+  spent_minor: number;
+  known_minor: number;
+  flexible_minor: number;
+  projected_spent_minor: number;
+  projected_status: BudgetStatus;
+}
+
+export interface UpcomingItem {
+  date: string;
+  name: string;
+  kind: Kind;
+  amount_minor: number | null;
+  budget_id: number | null;
+  budget_name: string | null;
+  source: "recurring" | "reminder";
+  due: boolean;
+  estimated: boolean;
+}
+
+export interface Forecast extends Settings {
+  period: Period;
+  expected_payday: string;
+  overdue: boolean;
+  days_left: number;
+  basis: { periods: number; days: number };
+  income: { so_far_minor: number; known_minor: number; projected_minor: number };
+  expenses: { so_far_minor: number; known_minor: number; flexible_minor: number; projected_minor: number };
+  balance_projected_minor: number;
+  safe_per_day_minor: number;
+  budgets: ForecastBudget[];
+  series: { date: string; balance_minor: number; projected: boolean; items: number }[];
+  upcoming: UpcomingItem[];
+}
+
 export interface ReminderOccurrence {
   id: number;
   reminder_id: number;

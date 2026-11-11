@@ -247,3 +247,19 @@ def test_F9_upcoming_fields(api: Api) -> None:
         "due": False,
         "estimated": False,
     }
+
+
+def test_series_runs_from_the_period_start_to_the_day_before_payday(api: Api) -> None:
+    """§7 chart data: actual balance to today, then projected; it ends at the projection."""
+    _three_periods(api)
+    api.rule(anchor_date="2026-11-05")
+    result = _forecast(api)
+    series = result["series"]
+    assert [p["date"] for p in series[:2]] == ["2026-10-31", "2026-11-01"]
+    assert [p["balance_minor"] for p in series[:2]] == [200000, 195000]
+    assert not series[1]["projected"] and series[2]["projected"]
+    assert series[-1]["date"] == "2026-11-29"
+    assert len(series) == 2 + result["days_left"]
+    assert series[-1]["balance_minor"] == result["balance_projected_minor"]
+    on_fifth = next(p for p in series if p["date"] == "2026-11-05")
+    assert on_fifth["items"] == 1

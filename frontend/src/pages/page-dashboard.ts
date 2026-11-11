@@ -1,15 +1,17 @@
 import { css, html, nothing } from "lit";
-import { api, query } from "../api";
+import { ApiError, api, query } from "../api";
 import "../components/charts/pb-category-chart";
 import "../components/charts/pb-pace-chart";
 import "../components/charts/pb-periods-chart";
 import "../components/charts/pb-progress-chart";
+import "../components/pb-forecast-summary";
+import "../components/pb-upcoming-list";
 import { formatDate } from "../dates";
 import { t } from "../i18n";
 import { type CurrencyInfo, formatMoney } from "../money";
 import { PageElement } from "../page";
 import { shared } from "../styles";
-import type { Breakdown, Daily, HistoryItem, Period, Summary } from "../types";
+import type { Breakdown, Daily, Forecast, HistoryItem, Period, Summary } from "../types";
 import { define } from "../define";
 
 const HISTORY_LIMIT = 12;
@@ -26,6 +28,7 @@ export class PageDashboard extends PageElement {
     _history: { state: true },
     _breakdownBudget: { state: true },
     _stacked: { state: true },
+    _forecast: { state: true },
   };
   declare _periods: Period[];
   declare _periodRef: string;
@@ -35,6 +38,8 @@ export class PageDashboard extends PageElement {
   declare _history: HistoryItem[];
   declare _breakdownBudget: string;
   declare _stacked: boolean;
+  /** v1.3: shown for the current period only. */
+  declare _forecast: Forecast | null;
 
   constructor() {
     super();
@@ -46,6 +51,7 @@ export class PageDashboard extends PageElement {
     this._history = [];
     this._breakdownBudget = "";
     this._stacked = false;
+    this._forecast = null;
   }
 
   static override styles = [
@@ -120,6 +126,16 @@ export class PageDashboard extends PageElement {
     this._daily = daily;
     this._breakdown = breakdown;
     this._history = history.items;
+    this._forecast = ref === "current" ? await this.loadForecast() : null;
+  }
+
+  private async loadForecast(): Promise<Forecast | null> {
+    try {
+      return await api.get<Forecast>("forecast");
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) return null; // no current period
+      throw err;
+    }
   }
 
   private selectPeriod(ref: string) {
@@ -181,11 +197,23 @@ export class PageDashboard extends PageElement {
           </div>
         </div>
       </div>
+      ${this._forecast
+        ? html`<div class="card">
+            <h2>${t("forecast.title")}</h2>
+            <pb-forecast-summary .forecast=${this._forecast}></pb-forecast-summary>
+          </div>`
+        : nothing}
       <div class="grid">
         <div class="card">
           <h2>${t("chart.progress")}</h2>
-          <pb-progress-chart .summary=${s}></pb-progress-chart>
+          <pb-progress-chart .summary=${s} .forecast=${this._forecast}></pb-progress-chart>
         </div>
+        ${this._forecast
+          ? html`<div class="card">
+              <h2>${t("upcoming.title")}</h2>
+              <pb-upcoming-list .forecast=${this._forecast}></pb-upcoming-list>
+            </div>`
+          : nothing}
         <div class="card">
           <h2>${t("chart.pace")}</h2>
           <pb-pace-chart .daily=${this._daily} .targetMinor=${targetTotal} .currency=${currency}></pb-pace-chart>

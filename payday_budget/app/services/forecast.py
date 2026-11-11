@@ -7,7 +7,7 @@ import datetime as dt
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, case, func, select
 from sqlalchemy.orm import Session
 
 from app import recurrence
@@ -183,6 +183,59 @@ def _known_items(session: Session, today: dt.date, payday: dt.date) -> list[Item
     return items
 
 
+def _series(
+    session: Session,
+    period: Period,
+    today: dt.date,
+    items: list[Item],
+    flexible_total: int,
+    days_left: int,
+) -> list[dict[str, Any]]:
+    """§7 chart: the running balance per day, actual from the period start to today, then
+    projected to the day before the payday (known items on their dates, due ones on the
+    first day, flexible spending spread evenly; the last point is the projected balance)."""
+    signed = case(
+        (Transaction.kind == INCOME, Transaction.amount_minor), else_=-Transaction.amount_minor
+    )
+    per_day = {
+        day: int(total)
+        for day, total in session.execute(
+            select(Transaction.date, func.sum(signed))
+            .where(Transaction.date >= period.start_date, Transaction.date <= today)
+            .group_by(Transaction.date)
+        )
+    }
+    series = []
+    balance = 0
+    day = period.start_date
+    while day <= today:
+        balance += per_day.get(day, 0)
+        series.append(
+            {"date": day.isoformat(), "balance_minor": balance, "projected": False, "items": 0}
+        )
+        day += dt.timedelta(days=1)
+
+    def value(item: Item) -> int:
+        amount = item.amount_minor or 0
+        return amount if item.kind == INCOME else -amount
+
+    known = balance
+    for k in range(1, days_left + 1):
+        day = today + dt.timedelta(days=k)
+        on_day = [i for i in items if (i.due and k == 1) or (not i.due and i.date == day)]
+        known += sum(value(i) for i in on_day)
+        flexible = round_half_up_div(flexible_total * k, days_left)
+        series.append(
+            {
+                "date": day.isoformat(),
+                "balance_minor": known - flexible,
+                "projected": True,
+                "items": len(on_day),
+            }
+        )
+    return series
+
+
 def forecast(session: Session, today: dt.date) -> dict[str, Any]:
     period = periods.current(session, today)
     if period is None:
@@ -250,6 +303,7 @@ def forecast(session: Session, today: dt.date) -> dict[str, Any]:
         "balance_projected_minor": income_projected - expenses_projected,
         "safe_per_day_minor": round_half_up_div(max(0, available), max(days_left, 1)),  # F8
         "budgets": budgets,
+        "series": _series(session, period, today, items, flexible_total, days_left),
         "upcoming": [  # F9
             {
                 "date": i.date.isoformat(),
