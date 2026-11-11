@@ -227,7 +227,7 @@ def breakdown(
     }
 
 
-def _pace_length_days(session: Session, period: Period) -> int:
+def pace_length_days(session: Session, period: Period) -> int:
     """§8: average length of the last 3 periods closed before `period` (fallback 30)."""
     earlier = list(
         session.scalars(
@@ -265,6 +265,6 @@ def daily(session: Session, period: Period, today: dt.date) -> dict[str, Any]:
         day += dt.timedelta(days=1)
     return {
         "period": periods.serialize(period, b, today),
-        "pace_length_days": _pace_length_days(session, period),
+        "pace_length_days": pace_length_days(session, period),
         "days": days,
     }

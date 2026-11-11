@@ -69,7 +69,8 @@ Money stays integer minor units; every division rounds half up once, at the end 
   set aside first) (P2).
 - **F9** **Upcoming** lists every known item (F2) by date: date, name (reminder name, or the
   rule's description or category), kind, amount or null, budget, source (`recurring` /
-  `reminder`), and `due` (true for open reminder occurrences).
+  `reminder`), `due` (true for open reminder occurrences) and `estimated` (true when the
+  amount is a reminder's last recorded one, F3; D6).
 
 ## 5. App
 
@@ -132,6 +133,7 @@ Options as v1 (`title`); the forecast always covers the current period.
 | D3 | All four answers: end-of-period balance, per-budget outlook, safe per day, upcoming. |
 | D4 | Cards and the app dashboard, plus sensors. |
 | D5 | A separate release, 1.3.0, with this spec. |
+| D6 | Upcoming items carry `estimated` (amount from a reminder's history, F3), so the UI can show "≈". Added at M19. |
 
 ### Proposals (accepted 2026-11-11)
 

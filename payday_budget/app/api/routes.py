@@ -30,6 +30,7 @@ from app.services import (
     backup,
     budgets,
     categories,
+    forecast,
     periods,
     recurring,
     reminders,
@@ -427,6 +428,12 @@ def delete_recurring(rule_id: int, session: SessionDep) -> Response:
     recurring.remove(session, recurring.get(session, rule_id))
     session.commit()
     return NO_CONTENT
+
+
+@router.get("/forecast")
+def get_forecast(session: SessionDep, today: TodayDep) -> dict[str, Any]:
+    """v1.3: the current period's forecast (F1-F9)."""
+    return forecast.forecast(session, today)
 
 
 @router.get("/suggestions")
