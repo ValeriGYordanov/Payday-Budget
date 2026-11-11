@@ -399,3 +399,75 @@ async def test_end_to_end_reminders(hass: HomeAssistant, real_addon: RealAddon) 
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+async def test_end_to_end_forecast(
+    hass: HomeAssistant, real_addon: RealAddon, hass_ws_client: WebSocketGenerator
+) -> None:
+    """v1.3: forecast sensors, action and WebSocket command against the real add-on."""
+    host, port = real_addon.base.removeprefix("http://").split(":")
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=DOMAIN,
+        data={CONF_HOST: host, CONF_PORT: int(port), CONF_TOKEN: real_addon.token},
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    entry.runtime_data.coordinator._debounced_refresh.cooldown = 0.1
+
+    def state(entity_id: str) -> str | None:
+        current = hass.states.get(entity_id)
+        return current.state if current else None
+
+    today = dt.datetime.now(dt.UTC).date()
+    categories = real_addon.call("GET", "categories")["items"]
+    salary = next(c["id"] for c in categories if c["name"] == "Salary")
+    food = next(c["id"] for c in categories if c["name"] == "Food")
+    needs = next(
+        b["id"] for b in real_addon.call("GET", "budgets")["items"] if b["name"] == "Needs"
+    )
+    real_addon.call(
+        "POST", "transactions", {"kind": "income", "amount_minor": 100000, "category_id": salary}
+    )
+    real_addon.call(
+        "POST",
+        "recurring",
+        {
+            "kind": "expense",
+            "amount_minor": 1599,
+            "category_id": food,
+            "budget_id": needs,
+            "frequency": "weekly",
+            "anchor_date": (today + dt.timedelta(days=3)).isoformat(),
+            "description": "Netflix",
+        },
+    )
+    expected = real_addon.call("GET", "forecast")
+    await _wait_for(
+        hass,
+        lambda: state("sensor.payday_budget_upcoming") == str(len(expected["upcoming"])),
+        timeout=15,
+    )
+    assert expected["upcoming"] and expected["upcoming"][0]["name"] == "Netflix"
+    assert state("sensor.payday_budget_expected_payday") == expected["expected_payday"]
+    balance = expected["balance_projected_minor"]
+    assert (
+        state("sensor.payday_budget_projected_balance") == f"{balance // 100}.{balance % 100:02d}"
+    )
+    safe = expected["safe_per_day_minor"]
+    assert state("sensor.payday_budget_safe_per_day") == f"{safe // 100}.{safe % 100:02d}"
+    assert state("sensor.payday_budget_needs_projected") is not None
+
+    response = await hass.services.async_call(
+        DOMAIN, "get_forecast", {}, blocking=True, return_response=True
+    )
+    assert response["expected_payday"] == expected["expected_payday"]
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": "payday_budget/forecast"})
+    msg = await client.receive_json()
+    assert msg["success"]
+    assert msg["result"]["balance_projected_minor"] == balance
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()

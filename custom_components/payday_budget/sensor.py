@@ -15,7 +15,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from .coordinator import PaydayBudgetConfigEntry, PaydayBudgetCoordinator
 from .entity import BudgetEntity, PaydayBudgetEntity, track_budget_entities
 from .helpers import reminder_item, transaction_item
-from .money import to_decimal, to_str
+from .money import to_decimal, to_str, with_decimal_strings
 
 PARALLEL_UPDATES = 0
 
@@ -39,6 +39,10 @@ async def async_setup_entry(
             CategoriesSensor(coordinator),
             BudgetsSensor(coordinator),
             RemindersSensor(coordinator),
+            ProjectedBalanceSensor(coordinator),
+            SafePerDaySensor(coordinator),
+            ExpectedPaydaySensor(coordinator),
+            UpcomingSensor(coordinator),
         ]
     )
 
@@ -48,6 +52,7 @@ async def async_setup_entry(
             BudgetAmountSensor(coord, budget_id, "spent", "spent_minor"),
             BudgetAmountSensor(coord, budget_id, "remaining", "remaining_minor"),
             BudgetUsedSensor(coord, budget_id),
+            BudgetProjectedSensor(coord, budget_id),
         ]
 
     track_budget_entities(hass, entry, async_add_entities, budget_sensors, "sensor")
@@ -252,6 +257,117 @@ class RemindersSensor(PaydayBudgetEntity, SensorEntity):
         data = self.coordinator.data
         return {
             "reminders": [reminder_item(o, data.currency, data.minor_unit) for o in data.reminders]
+        }
+
+
+class ProjectedBalanceSensor(MoneySensor):
+    """v1.3 §6: projected end-of-period balance (F6)."""
+
+    _attr_translation_key = "projected_balance"
+
+    def __init__(self, coordinator: PaydayBudgetCoordinator) -> None:
+        super().__init__(coordinator, "projected_balance")
+
+    @property
+    def native_value(self) -> Decimal | None:
+        f = self.coordinator.data.forecast
+        return self.money(f["balance_projected_minor"]) if f else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        f = self.coordinator.data.forecast
+        if f is None:
+            return None
+        unit = self.coordinator.data.minor_unit
+        return {
+            "projected_income": to_str(f["income"]["projected_minor"], unit),
+            "projected_expenses": to_str(f["expenses"]["projected_minor"], unit),
+            "overdue": f["overdue"],
+        }
+
+
+class SafePerDaySensor(MoneySensor):
+    """v1.3 §6: safe to spend per day until the payday (F8)."""
+
+    _attr_translation_key = "safe_per_day"
+
+    def __init__(self, coordinator: PaydayBudgetCoordinator) -> None:
+        super().__init__(coordinator, "safe_per_day")
+
+    @property
+    def native_value(self) -> Decimal | None:
+        f = self.coordinator.data.forecast
+        return self.money(f["safe_per_day_minor"]) if f else None
+
+
+class ExpectedPaydaySensor(PaydayBudgetEntity, SensorEntity):
+    """v1.3 §6: the expected next payday (F1)."""
+
+    _attr_translation_key = "expected_payday"
+    _attr_device_class = SensorDeviceClass.DATE
+
+    def __init__(self, coordinator: PaydayBudgetCoordinator) -> None:
+        super().__init__(coordinator, "expected_payday")
+
+    @property
+    def native_value(self) -> dt.date | None:
+        f = self.coordinator.data.forecast
+        return dt.date.fromisoformat(f["expected_payday"]) if f else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        f = self.coordinator.data.forecast
+        return {"days_left": f["days_left"], "overdue": f["overdue"]} if f else None
+
+
+class UpcomingSensor(PaydayBudgetEntity, SensorEntity):
+    """v1.3 §6: known items before the payday (F9); `items` is not recorded."""
+
+    _attr_translation_key = "upcoming"
+    _unrecorded_attributes = frozenset({"items"})
+
+    def __init__(self, coordinator: PaydayBudgetCoordinator) -> None:
+        super().__init__(coordinator, "upcoming")
+
+    @property
+    def native_value(self) -> int | None:
+        f = self.coordinator.data.forecast
+        return len(f["upcoming"]) if f else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        data = self.coordinator.data
+        if data.forecast is None:
+            return None
+        items = with_decimal_strings(data.forecast["upcoming"], data.minor_unit)
+        return {"items": [{**item, "currency": data.currency} for item in items]}
+
+
+class BudgetProjectedSensor(BudgetEntity, MoneySensor):
+    """v1.3 §6: the budget's projected spent by the payday (F7)."""
+
+    def __init__(self, coordinator: PaydayBudgetCoordinator, budget_id: int) -> None:
+        super().__init__(coordinator, budget_id, "projected")
+
+    def _projection(self) -> dict[str, Any] | None:
+        f = self.coordinator.data.forecast
+        if f is None:
+            return None
+        return next((b for b in f["budgets"] if b["budget_id"] == self.budget_id), None)
+
+    @property
+    def native_value(self) -> Decimal | None:
+        projection = self._projection()
+        return self.money(projection["projected_spent_minor"]) if projection else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        projection = self._projection()
+        if projection is None:
+            return None
+        return {
+            "projected_status": projection["projected_status"],
+            "target": to_str(projection["target_minor"], self.coordinator.data.minor_unit),
         }
 
 

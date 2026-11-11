@@ -235,3 +235,5 @@ dismiss_reminder:
         number:
           min: 1
           mode: box
+
+get_forecast:

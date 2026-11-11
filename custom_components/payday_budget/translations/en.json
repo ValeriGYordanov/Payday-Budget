@@ -98,6 +98,21 @@
       },
       "reminders": {
         "name": "Reminders"
+      },
+      "projected_balance": {
+        "name": "Projected balance"
+      },
+      "safe_per_day": {
+        "name": "Safe per day"
+      },
+      "expected_payday": {
+        "name": "Expected payday"
+      },
+      "upcoming": {
+        "name": "Upcoming"
+      },
+      "budget_projected": {
+        "name": "{budget} projected"
       }
     },
     "binary_sensor": {
@@ -392,6 +407,10 @@
           "description": "Tag names."
         }
       }
+    },
+    "get_forecast": {
+      "name": "Get forecast",
+      "description": "Returns the current period's forecast: projected balance, safe to spend per day, expected payday, per-budget outlook and upcoming items."
     },
     "dismiss_reminder": {
       "name": "Ignore reminder",

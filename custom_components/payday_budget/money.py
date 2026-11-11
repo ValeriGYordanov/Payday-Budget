@@ -2,6 +2,7 @@
 
 import re
 from decimal import Decimal
+from typing import Any
 
 _AMOUNT_RE = re.compile(r"^\d+(?:\.(\d+))?$")
 
@@ -14,6 +15,22 @@ def to_decimal(minor: int, minor_unit: int) -> Decimal:
 def to_str(minor: int, minor_unit: int) -> str:
     """Exact decimal string for attributes and responses (HA's JSON has no Decimal)."""
     return str(to_decimal(minor, minor_unit))
+
+
+def with_decimal_strings(value: Any, minor_unit: int) -> Any:
+    """Every `*_minor` integer becomes an exact decimal string under the key without the
+    suffix (HA's JSON has no Decimal); nested dicts and lists too. None stays None."""
+    if isinstance(value, list):
+        return [with_decimal_strings(item, minor_unit) for item in value]
+    if not isinstance(value, dict):
+        return value
+    out: dict[str, Any] = {}
+    for key, item in value.items():
+        if key.endswith("_minor") and (item is None or isinstance(item, int)):
+            out[key.removesuffix("_minor")] = None if item is None else to_str(item, minor_unit)
+        else:
+            out[key] = with_decimal_strings(item, minor_unit)
+    return out
 
 
 def parse_amount(value: object, minor_unit: int) -> int | None:

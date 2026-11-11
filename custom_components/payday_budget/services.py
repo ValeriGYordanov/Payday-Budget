@@ -24,7 +24,7 @@ from .helpers import (
     resolve_tag,
     transaction_item,
 )
-from .money import parse_amount, to_str
+from .money import parse_amount, to_str, with_decimal_strings
 
 KINDS = probatio.In(["income", "expense"])
 AMOUNT = probatio.Any(int, float, cv.string)  # converted exactly by money.parse_amount
@@ -379,6 +379,17 @@ async def _dismiss_reminder(call: ServiceCall) -> None:
     await entry.runtime_data.coordinator.async_request_refresh()
 
 
+async def _get_forecast(call: ServiceCall) -> ServiceResponse:
+    """v1.3 §6: the current period's forecast, money as exact decimal strings."""
+    entry = _entry(call.hass)
+    try:
+        forecast = await entry.runtime_data.client.get("forecast")
+    except PaydayBudgetError as err:
+        raise_for(err)
+    result: dict[str, Any] = with_decimal_strings(forecast, int(forecast["minor_unit"]))
+    return result
+
+
 def async_register_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN, "add_transaction", _add, ADD_SCHEMA, SupportsResponse.OPTIONAL
@@ -418,4 +429,7 @@ def async_register_services(hass: HomeAssistant) -> None:
     )
     hass.services.async_register(
         DOMAIN, "dismiss_reminder", _dismiss_reminder, DISMISS_REMINDER_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, "get_forecast", _get_forecast, probatio.Schema({}), SupportsResponse.ONLY
     )

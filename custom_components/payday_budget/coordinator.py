@@ -31,6 +31,7 @@ class PaydayBudgetData:
     recent: list[dict[str, Any]]  # newest RECENT_LIMIT transactions, any period
     current_count: int | None  # transactions in the current period; None without one
     reminders: list[dict[str, Any]]  # open reminder occurrences (v1.2 §4.4)
+    forecast: dict[str, Any] | None  # v1.3; None without a current period
 
     @property
     def currency(self) -> str:
@@ -86,14 +87,15 @@ class PaydayBudgetCoordinator(DataUpdateCoordinator[PaydayBudgetData]):
                 self.client.get("reminders/occurrences", status="open"),
             )
             try:
-                summary, current = await asyncio.gather(
+                summary, current, forecast = await asyncio.gather(
                     self.client.get("summary", period="current"),
                     self.client.get("transactions", period="current", limit=1),
+                    self.client.get("forecast"),
                 )
             except ApiError as err:
                 if err.status != 404:
                     raise
-                summary = current = None
+                summary = current = forecast = None
         except InvalidAuth as err:
             raise ConfigEntryAuthFailed("The add-on rejected the token") from err
         except (CannotConnect, ApiError) as err:
@@ -108,6 +110,7 @@ class PaydayBudgetCoordinator(DataUpdateCoordinator[PaydayBudgetData]):
             recent=recent["items"],
             current_count=None if current is None else int(current["total"]),
             reminders=reminders["items"],
+            forecast=forecast,
         )
 
     async def listen(self) -> None:

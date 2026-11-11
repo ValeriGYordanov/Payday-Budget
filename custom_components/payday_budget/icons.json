@@ -15,7 +15,12 @@
       "recent_transactions": { "default": "mdi:format-list-bulleted" },
       "categories": { "default": "mdi:shape-outline" },
       "budgets": { "default": "mdi:wallet-outline" },
-      "reminders": { "default": "mdi:bell-outline" }
+      "reminders": { "default": "mdi:bell-outline" },
+      "projected_balance": { "default": "mdi:chart-timeline-variant" },
+      "safe_per_day": { "default": "mdi:cash-clock" },
+      "expected_payday": { "default": "mdi:calendar-arrow-right" },
+      "upcoming": { "default": "mdi:calendar-clock" },
+      "budget_projected": { "default": "mdi:chart-line" }
     },
     "binary_sensor": {
       "budget_over_target": { "default": "mdi:check-circle-outline", "state": { "on": "mdi:alert-circle" } },
@@ -36,6 +41,7 @@
     "update_category": { "service": "mdi:shape-outline" },
     "delete_category": { "service": "mdi:delete" },
     "record_reminder": { "service": "mdi:bell-check" },
-    "dismiss_reminder": { "service": "mdi:bell-off" }
+    "dismiss_reminder": { "service": "mdi:bell-off" },
+    "get_forecast": { "service": "mdi:chart-timeline-variant" }
   }
 }

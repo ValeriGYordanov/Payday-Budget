@@ -182,6 +182,63 @@ class FakeAddon:
         ]
         self.current_total = 2
         self.occurrences: list[dict[str, Any]] = []  # open reminder occurrences
+        self.forecast: dict[str, Any] = {
+            "period": PERIOD_CURRENT,
+            **self.settings,
+            "expected_payday": "2026-12-01",
+            "overdue": False,
+            "days_left": 28,
+            "basis": {"periods": 2, "days": 60},
+            "income": {"so_far_minor": 300000, "known_minor": 15000, "projected_minor": 315000},
+            "expenses": {
+                "so_far_minor": 154550,
+                "known_minor": 4000,
+                "flexible_minor": 2800,
+                "projected_minor": 161350,
+            },
+            "balance_projected_minor": 153650,
+            "safe_per_day_minor": 5393,
+            "budgets": [
+                {
+                    "budget_id": 1,
+                    "name": "Needs",
+                    "direction": "negative",
+                    "target_minor": 157500,
+                    "spent_minor": 4550,
+                    "known_minor": 4000,
+                    "flexible_minor": 2800,
+                    "projected_spent_minor": 11350,
+                    "projected_status": "ok",
+                }
+            ],
+            "series": [
+                {"date": "2026-11-01", "balance_minor": 145450, "projected": False, "items": 0}
+            ],
+            "upcoming": [
+                {
+                    "date": "2026-11-05",
+                    "name": "Netflix",
+                    "kind": "expense",
+                    "amount_minor": 1599,
+                    "budget_id": 2,
+                    "budget_name": "Fun",
+                    "source": "recurring",
+                    "due": False,
+                    "estimated": False,
+                },
+                {
+                    "date": "2026-11-20",
+                    "name": "Electricity",
+                    "kind": "expense",
+                    "amount_minor": None,
+                    "budget_id": 1,
+                    "budget_name": "Needs",
+                    "source": "reminder",
+                    "due": False,
+                    "estimated": False,
+                },
+            ],
+        }
         self.periods = [PERIOD_CURRENT, PERIOD_PREVIOUS]  # newest first, like the API
         self.summary: dict[str, Any] | None = {
             "period": PERIOD_CURRENT,
@@ -241,6 +298,10 @@ class FakeAddon:
             if path.startswith("reminders/occurrences/"):
                 found = next(o for o in self.occurrences if o["id"] == int(path.split("/")[2]))
                 return copy.deepcopy(found)
+            if path == "forecast":
+                if self.summary is None:
+                    raise ApiError(404, "not_found", "Current period not found", "period")
+                return copy.deepcopy(self.forecast)
             if path == "tags":
                 return {"items": copy.deepcopy(self.tags)}
             if path == "transactions":

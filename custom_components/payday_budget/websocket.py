@@ -109,6 +109,15 @@ async def ws_daily(
     await _proxy(hass, connection, msg, "daily", {"period": msg["period"]})
 
 
+@websocket_api.websocket_command({probatio.Required("type"): f"{DOMAIN}/forecast"})
+@websocket_api.async_response
+async def ws_forecast(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """v1.3: the current period's forecast for the cards."""
+    await _proxy(hass, connection, msg, "forecast", {})
+
+
 def async_register_websocket_commands(hass: HomeAssistant) -> None:
-    for command in (ws_summary, ws_history, ws_breakdown, ws_daily):
+    for command in (ws_summary, ws_history, ws_breakdown, ws_daily, ws_forecast):
         websocket_api.async_register_command(hass, command)
