@@ -959,7 +959,7 @@
         <div class="actions"><a class="button" href="api/v1/export" download>${N(`backup.export`)}</a></div>
         <pb-backup-import></pb-backup-import>
       </div>
-      <p class="muted">${N(`settings.version`,{version:`1.2.0`})}</p>
+      <p class="muted">${N(`settings.version`,{version:`1.3.0`})}</p>
       ${A}
     `}});var Kd=[{name:`Needs`,percent:`50`,direction:`negative`},{name:`Wants`,percent:`30`,direction:`negative`},{name:`Savings`,percent:`20`,direction:`positive`}];I(`page-setup`,class extends P{static{this.properties={...P.properties,_step:{state:!0},_currencies:{state:!0},_currency:{state:!0},_start:{state:!0},_periodName:{state:!0},_budgets:{state:!0},_error:{state:!0},_busy:{state:!0}}}constructor(){super(),this._step=0,this._currencies=[],this._currency=`EUR`,this._start=Bd(),this._periodName=``,this._budgets=Kd.map(e=>({...e})),this._error=``,this._busy=!1}static{this.styles=[F,o`
       .budget {

@@ -57,6 +57,11 @@ token from **Budget → Settings → Integration token**.
   a Home Assistant notification and, optionally, a push to your phone.
 - **Backup**: Settings → Backup exports everything to a zip, and restores it
   (also from the setup wizard on a new install). Restoring replaces all data.
+- **Forecast** for the current period: the next payday is expected after the
+  average length of your last 3 periods. Until then it adds what is known
+  (recurring transactions, reminders) and the flexible spending of your last 3
+  periods, and shows the projected balance, how much is safe to spend per day
+  (after what savings still need), each budget's outlook and what is coming up.
 - Money is stored as integer minor units (cents); there are no floats anywhere.
 
 ## Entities
@@ -78,6 +83,11 @@ All on one device, **Payday Budget**.
 | `sensor.payday_budget_categories` | Active categories; attribute `categories` with all of them, archived ones included |
 | `sensor.payday_budget_budgets` | Active budgets; attribute `budgets` with all of them (incl. `direction`), archived ones included |
 | `sensor.payday_budget_reminders` | Due reminders; attribute `reminders` (`id`, `name`, `due_date`, `amount` or null…) |
+| `sensor.payday_budget_projected_balance` | Projected balance at the next payday; attributes `projected_income`, `projected_expenses`, `overdue` |
+| `sensor.payday_budget_safe_per_day` | Safe to spend per day until the next payday |
+| `sensor.payday_budget_expected_payday` | Expected next payday (date); attributes `days_left`, `overdue` |
+| `sensor.payday_budget_upcoming` | Recurring transactions and reminders before the next payday; attribute `items` |
+| `sensor.payday_budget_<budget>_projected` | Projected spent by the next payday; attributes `projected_status`, `target` |
 | `button.payday_budget_start_new_period` | Starts a period dated today |
 
 Amount sensors have no `state_class`: Home Assistant's long-term statistics are
@@ -128,6 +138,7 @@ data:
 | `payday_budget.delete_category` | `category`, `kind` (when the name exists in both kinds) | — |
 | `payday_budget.record_reminder` | `occurrence` (an `id` from the reminders sensor), then any of `amount`, `category`, `budget`, `date`, `description`, `tags`; the rest comes from the reminder | `{transaction_id}` |
 | `payday_budget.dismiss_reminder` | `occurrence` | — |
+| `payday_budget.get_forecast` | — | projected balance, safe per day, expected payday, budgets, upcoming… |
 
 ```yaml
 action: payday_budget.list_transactions
@@ -175,9 +186,15 @@ budget: Wants                              # optional
 ---
 type: custom:payday-budget-pace-card       # cumulative spend vs target pace
 period: current
+---
+type: custom:payday-budget-forecast-card   # projected balance, safe per day, payday + chart
+---
+type: custom:payday-budget-upcoming-card   # what is due before the next payday
+limit: 5                                   # optional
 ```
 
-Every card also accepts `title`.
+Every card also accepts `title`. The progress card also takes `forecast: true`:
+a marker on each bar shows the budget's projected spent by the next payday.
 
 ## Development
 

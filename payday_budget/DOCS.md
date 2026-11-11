@@ -45,6 +45,16 @@ pre-filled with what you set (category, budget, amount if known). Record it or
 ignore it. A new reminder starts with its latest due date only; due dates
 before your first period are skipped.
 
+## Forecast
+
+For the current period, the dashboard shows a **Forecast**: the next payday is
+expected after the average length of your last 3 periods (30 days at first).
+Until then it counts what is known — recurring transactions, reminders (their
+amount, or the last one you recorded) — plus your usual flexible spending
+from the last 3 periods. You see the projected balance, how much is safe to
+spend per day after what savings still need, a marker on each budget bar, and
+everything coming up before payday. Nothing is stored; it updates as you go.
+
 ## Backup and restore
 
 **Settings → Backup → Export** downloads everything as a zip (one CSV per table).

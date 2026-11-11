@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.0
+
+- Forecast for the current period: expected next payday, projected
+  end-of-period balance, safe to spend per day (savings set aside first),
+  each budget's projected outlook and the upcoming recurring transactions
+  and reminders. On the app dashboard, as new cards
+  (`payday-budget-forecast-card`, `payday-budget-upcoming-card`, and
+  `forecast: true` on the progress card) and as sensors and the
+  `get_forecast` action.
+
 ## 1.2.0
 
 - Budgets have a direction: negative (spend at most) or positive (reach at
